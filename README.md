@@ -170,7 +170,7 @@ public class User {
 ```
 
 ### mapper(dao)层
-```
+```java
 package com.kot.kotmybatis.mapper;
 
 import com.kot.kotmybatis.entity.User;
@@ -185,7 +185,7 @@ public interface UserMapper extends BaseMapper<User> {
 ```
 
 ### 业务层
-```
+```java
 package com.kot.kotmybatis.service.impl;
 
 import com.kot.kotmybatis.entity.User;
