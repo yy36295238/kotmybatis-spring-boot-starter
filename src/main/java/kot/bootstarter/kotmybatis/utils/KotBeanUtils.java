@@ -4,11 +4,15 @@ import org.springframework.util.ReflectionUtils;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * @author YangYu
  */
 public class KotBeanUtils {
+
+    private static final Map<Class<?>, Field[]> FIELDS_CACHE = new HashMap<>();
 
     /**
      * 类包含注解
@@ -58,5 +62,18 @@ public class KotBeanUtils {
         }
         field.setAccessible(true);
         return ReflectionUtils.getField(field, bean);
+    }
+
+    /**
+     * 获取对象属性
+     */
+    public static Field[] fields(Object obj) {
+        Class<?> clazz = obj.getClass();
+        if (FIELDS_CACHE.containsKey(clazz)) {
+            return FIELDS_CACHE.get(clazz);
+        }
+        final Field[] declaredFields = clazz.getDeclaredFields();
+        FIELDS_CACHE.put(clazz, declaredFields);
+        return declaredFields;
     }
 }

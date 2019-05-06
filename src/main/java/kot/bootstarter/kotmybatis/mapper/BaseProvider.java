@@ -17,6 +17,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * @author YangYu
+ */
 @Slf4j
 public class BaseProvider<T> implements ProviderMethodResolver {
 
@@ -52,7 +55,7 @@ public class BaseProvider<T> implements ProviderMethodResolver {
         final T entity = (T) map.get(CT.ALIAS_ENTITY);
         final String conditionSql = (String) map.get(CT.SQL_CONDITION);
         final String whereBuilder = whereBuilder(entity, conditionSql);
-        Assert.hasLength(whereBuilder, "delete must be contain where condition");
+        Assert.hasLength(whereBuilder, "[delete must be contain where condition!!!]");
         return new SQL().DELETE_FROM(tableByClazz(entity)).WHERE(whereBuilder).toString();
     }
 
@@ -67,7 +70,7 @@ public class BaseProvider<T> implements ProviderMethodResolver {
         final T setEntity = (T) map.get(CT.SET_ENTITY);
         final String conditionSql = (String) map.get(CT.SQL_CONDITION);
         final String whereBuilder = whereBuilder(whereEntity, conditionSql);
-        Assert.hasLength(whereBuilder, "update must be contain where condition");
+        Assert.hasLength(whereBuilder, "[update must be contain where condition!!!]");
         return new SQL().UPDATE(tableByClazz(whereEntity)).SET(updateSqlBuilder(setEntity, CT.SET_ENTITY)).WHERE(whereBuilder).toString();
     }
 
@@ -88,7 +91,7 @@ public class BaseProvider<T> implements ProviderMethodResolver {
     }
 
     private static void entitySqlBuilder(StringBuilder whereBuilder, Object entity) {
-        final Field[] fields = entity.getClass().getDeclaredFields();
+        final Field[] fields = KotBeanUtils.fields(entity);
         try {
             for (Field field : fields) {
                 field.setAccessible(true);
@@ -109,7 +112,7 @@ public class BaseProvider<T> implements ProviderMethodResolver {
     private static String insertSqlBuilder(Object entity) {
         StringBuilder columnsBuilder = new StringBuilder();
         StringBuilder valuesBuilder = new StringBuilder();
-        final Field[] fields = entity.getClass().getDeclaredFields();
+        final Field[] fields = KotBeanUtils.fields(entity);
         try {
             for (Field field : fields) {
                 field.setAccessible(true);
@@ -137,7 +140,7 @@ public class BaseProvider<T> implements ProviderMethodResolver {
 
     private static String updateSqlBuilder(Object entity, String alias) {
         StringBuilder columnsBuilder = new StringBuilder();
-        final Field[] fields = entity.getClass().getDeclaredFields();
+        final Field[] fields = KotBeanUtils.fields(entity);
         try {
             for (Field field : fields) {
                 field.setAccessible(true);
@@ -182,10 +185,6 @@ public class BaseProvider<T> implements ProviderMethodResolver {
         }
         TABLE_CACHE.put(entityClass, tableName);
         return tableName;
-    }
-
-    public static void main(String[] args) {
-        Assert.hasLength("", "1");
     }
 
 }
