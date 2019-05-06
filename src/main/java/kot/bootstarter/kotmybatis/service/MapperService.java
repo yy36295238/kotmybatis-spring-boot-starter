@@ -14,7 +14,7 @@ public interface MapperService<T> extends BaseMapperManager<T> {
      */
     int insert(T entity);
 
-    int save(T entity) throws IllegalAccessException;
+    int save(T entity);
 
     /**
      * 查询操作
