@@ -94,6 +94,23 @@ public class KotMybatisApplicationTests {
 
 }
 ```
+
+```sql
+CREATE TABLE `user` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `name` varchar(50) NOT NULL COMMENT '用户姓名',
+  `cell_phone` varchar(11) DEFAULT NULL COMMENT '手机号',
+  `email` varchar(50) NOT NULL COMMENT '邮箱',
+  `user_name` varchar(50) DEFAULT NULL COMMENT '用户名，登录时使用',
+  `password` varchar(64) NOT NULL COMMENT '密码',
+  `user_status` tinyint(4) DEFAULT '1' COMMENT '用户状态，1=正常,2=禁用,-9=删除',
+  `create_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建日期',
+  `create_user` bigint(20) DEFAULT NULL COMMENT '创建人',
+  `update_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后修改日期',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB AUTO_INCREMENT=20 DEFAULT CHARSET=utf8 COMMENT='用户表';
+```
+
 ### POM
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
