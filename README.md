@@ -2,7 +2,7 @@
 mybatis 增强工具，包含通用的增删改查功能
 
 > - 基于springboot-2.1.4  
-> - 代码生成工具：[https://github.com/yy36295238/kot-mybatis-generator](https://github.com/yy36295238/kot-mybatis-generator/)  
+> - 通用代码无需手写，使用代码生成工具快速生成：[https://github.com/yy36295238/kot-mybatis-generator](https://github.com/yy36295238/kot-mybatis-generator/)  
 > - 包含一些通用的操作方法
 
 ### 样例
