@@ -1,5 +1,6 @@
 package kot.bootstarter.kotmybatis.mapper;
 
+import kot.bootstarter.kotmybatis.annotation.Exist;
 import kot.bootstarter.kotmybatis.annotation.TableName;
 import kot.bootstarter.kotmybatis.common.CT;
 import kot.bootstarter.kotmybatis.common.Page;
@@ -12,8 +13,10 @@ import org.apache.ibatis.jdbc.SQL;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -91,18 +94,23 @@ public class BaseProvider<T> implements ProviderMethodResolver {
     }
 
     private static void entitySqlBuilder(StringBuilder whereBuilder, Object entity) {
-        final Field[] fields = KotBeanUtils.fields(entity);
-        try {
-            for (Field field : fields) {
-                field.setAccessible(true);
-                Object val = field.get(entity);
-                if (val != null) {
-                    String col = field.getName();
-                    whereBuilder.append(String.format("%s%s=#{%s%s}", CT.AND, KotStringUtils.camel2Underline(col), CT.ALIAS_ENTITY + CT.DOT, col));
-                }
+        final List<KotBeanUtils.FieldWarpper> fieldsList = KotBeanUtils.fields(entity);
+        for (KotBeanUtils.FieldWarpper fields : fieldsList) {
+            if (!fieldIsExist(fields)) {
+                continue;
             }
-        } catch (Exception e) {
-            throw new RuntimeException("", e);
+            Field field = fields.getField();
+            field.setAccessible(true);
+            Object val;
+            try {
+                val = field.get(entity);
+            } catch (Exception e) {
+                throw new RuntimeException("", e);
+            }
+            if (val != null) {
+                String col = field.getName();
+                whereBuilder.append(String.format("%s%s=#{%s%s}", CT.AND, KotStringUtils.camel2Underline(col), CT.ALIAS_ENTITY + CT.DOT, col));
+            }
         }
     }
 
@@ -112,9 +120,13 @@ public class BaseProvider<T> implements ProviderMethodResolver {
     private static String insertSqlBuilder(Object entity) {
         StringBuilder columnsBuilder = new StringBuilder();
         StringBuilder valuesBuilder = new StringBuilder();
-        final Field[] fields = KotBeanUtils.fields(entity);
         try {
-            for (Field field : fields) {
+            final List<KotBeanUtils.FieldWarpper> fieldsList = KotBeanUtils.fields(entity);
+            for (KotBeanUtils.FieldWarpper fields : fieldsList) {
+                if (!fieldIsExist(fields)) {
+                    continue;
+                }
+                Field field = fields.getField();
                 field.setAccessible(true);
                 Object val = field.get(entity);
                 if (val != null) {
@@ -140,9 +152,13 @@ public class BaseProvider<T> implements ProviderMethodResolver {
 
     private static String updateSqlBuilder(Object entity, String alias) {
         StringBuilder columnsBuilder = new StringBuilder();
-        final Field[] fields = KotBeanUtils.fields(entity);
         try {
-            for (Field field : fields) {
+            final List<KotBeanUtils.FieldWarpper> fieldsList = KotBeanUtils.fields(entity);
+            for (KotBeanUtils.FieldWarpper fields : fieldsList) {
+                if (!fieldIsExist(fields)) {
+                    continue;
+                }
+                Field field = fields.getField();
                 field.setAccessible(true);
                 Object val = field.get(entity);
                 if (val != null && !"id".equals(field.getName())) {
@@ -185,6 +201,19 @@ public class BaseProvider<T> implements ProviderMethodResolver {
         }
         TABLE_CACHE.put(entityClass, tableName);
         return tableName;
+    }
+
+    /**
+     * 数据库表中包含此列
+     */
+    private static boolean fieldIsExist(KotBeanUtils.FieldWarpper fields) {
+        final Annotation[] annotations = fields.getAnnotations();
+        for (Annotation annotation : annotations) {
+            if (annotation instanceof Exist && !((Exist) annotation).value()) {
+                return false;
+            }
+        }
+        return true;
     }
 
 }

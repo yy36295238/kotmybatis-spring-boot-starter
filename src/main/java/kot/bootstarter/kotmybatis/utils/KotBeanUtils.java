@@ -1,10 +1,15 @@
 package kot.bootstarter.kotmybatis.utils;
 
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.springframework.util.ReflectionUtils;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -12,7 +17,7 @@ import java.util.Map;
  */
 public class KotBeanUtils {
 
-    private static final Map<Class<?>, Field[]> FIELDS_CACHE = new HashMap<>();
+    private static final Map<Class<?>, List<FieldWarpper>> FIELDS_CACHE = new HashMap<>();
 
     /**
      * 类包含注解
@@ -67,13 +72,25 @@ public class KotBeanUtils {
     /**
      * 获取对象属性
      */
-    public static Field[] fields(Object obj) {
+    public static List<FieldWarpper> fields(Object obj) {
         Class<?> clazz = obj.getClass();
         if (FIELDS_CACHE.containsKey(clazz)) {
             return FIELDS_CACHE.get(clazz);
         }
+        List<FieldWarpper> list = new ArrayList<>();
         final Field[] declaredFields = clazz.getDeclaredFields();
-        FIELDS_CACHE.put(clazz, declaredFields);
-        return declaredFields;
+        for (Field field : declaredFields) {
+            list.add(new FieldWarpper(field, field.getDeclaredAnnotations()));
+        }
+        FIELDS_CACHE.put(clazz, list);
+        return list;
+    }
+
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class FieldWarpper {
+        private Field field;
+        private Annotation[] annotations;
     }
 }

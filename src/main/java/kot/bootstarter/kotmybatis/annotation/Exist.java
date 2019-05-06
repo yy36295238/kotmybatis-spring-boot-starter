@@ -13,5 +13,6 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @Target(ElementType.FIELD)
 @Retention(RUNTIME)
 @Documented
-public @interface PrimaryKey{
+public @interface Exist {
+    boolean value() default true;
 }
