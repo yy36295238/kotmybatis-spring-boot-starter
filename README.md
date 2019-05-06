@@ -95,6 +95,7 @@ public class KotMybatisApplicationTests {
 }
 ```
 
+### SQL脚本
 ```sql
 CREATE TABLE `user` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT COMMENT '主键',
