@@ -292,7 +292,7 @@ public class MapperServiceImpl<T> implements MapperService<T> {
         // in 查询拼接SQL语法
         if (conditionEnum == ConditionEnum.IN || conditionEnum == ConditionEnum.NIN) {
             Collection collection = (Collection) v;
-            if (isStringForCollection(collection)) {
+            if (isString(collection)) {
                 Collection<String> strings = (Collection<String>) v;
                 collect = strings.stream().map(c -> c = "'" + c + "'").collect(Collectors.joining(",", CT.LEFT_KUO, CT.RIGHT_KUO));
             } else {
@@ -310,7 +310,7 @@ public class MapperServiceImpl<T> implements MapperService<T> {
         }
     }
 
-    private boolean isStringForCollection(Collection<?> collection) {
+    private boolean isString(Collection<?> collection) {
         for (Object o : collection) {
             return o instanceof String;
         }
