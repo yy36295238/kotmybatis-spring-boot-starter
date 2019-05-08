@@ -181,6 +181,18 @@ CREATE TABLE `user` (
 </project>
 ```
 
+```properties
+# mysql
+spring.datasource.type=com.alibaba.druid.pool.DruidDataSource
+spring.datasource.driverClassName=com.mysql.jdbc.Driver
+spring.datasource.url=jdbc:mysql://localhost:3306/kakrot?useUnicode=true&characterEncoding=utf8&useSSL=false
+spring.datasource.username=root
+spring.datasource.password=123456
+#mybatis-驼峰
+mybatis.configuration.map-underscore-to-camel-case=true
+logging.level.com.kot.kotmybatis.mapper=debug
+```
+
 ### 数据库配置
 ```java
 import com.alibaba.druid.pool.DruidDataSource;
