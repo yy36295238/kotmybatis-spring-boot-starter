@@ -181,6 +181,7 @@ CREATE TABLE `user` (
 </project>
 ```
 
+### 配置文件
 ```properties
 # mysql
 spring.datasource.type=com.alibaba.druid.pool.DruidDataSource
