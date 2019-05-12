@@ -17,6 +17,7 @@ public interface BaseMapper<T> {
      * 保存操作
      */
     @InsertProvider(type = BaseProvider.class)
+    @Options(useGeneratedKeys = true, keyColumn = "id", keyProperty = "id")
     int insert(T entity);
 
     /**
