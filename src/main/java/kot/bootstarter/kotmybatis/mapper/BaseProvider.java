@@ -77,6 +77,13 @@ public class BaseProvider<T> implements ProviderMethodResolver {
         return new SQL().UPDATE(tableByClazz(whereEntity)).SET(updateSqlBuilder(setEntity, CT.SET_ENTITY)).WHERE(whereBuilder).toString();
     }
 
+    /*
+     * =====================条件组装分割线==================
+     */
+
+    /**
+     * where条件组装
+     */
     private String whereBuilder(T entity, String conditionSql) {
         StringBuilder whereBuilder = new StringBuilder();
         // 实体条件
@@ -93,6 +100,9 @@ public class BaseProvider<T> implements ProviderMethodResolver {
         return condition;
     }
 
+    /**
+     * 实体条件组装
+     */
     private static void entitySqlBuilder(StringBuilder whereBuilder, Object entity) {
         final List<KotBeanUtils.FieldWarpper> fieldsList = KotBeanUtils.fields(entity);
         for (KotBeanUtils.FieldWarpper fields : fieldsList) {
@@ -181,10 +191,18 @@ public class BaseProvider<T> implements ProviderMethodResolver {
         final T entity = (T) map.get(CT.ALIAS_ENTITY);
         final String conditionSql = (String) map.get(CT.SQL_CONDITION);
         final Set<String> columns = map.containsKey(CT.COLUMNS) ? (Set<String>) map.get(CT.COLUMNS) : null;
-        sql.SELECT(CollectionUtils.isEmpty(columns) ? column : String.join(CT.SPILT, columns));
-        return sql.FROM(tableByClazz(entity)).WHERE(whereBuilder(entity, conditionSql));
+        sql.SELECT(CollectionUtils.isEmpty(columns) ? column : String.join(CT.SPILT, columns))
+                .FROM(tableByClazz(entity));
+        final String whereSql = whereBuilder(entity, conditionSql);
+        if (StringUtils.isNotBlank(whereSql)) {
+            sql.WHERE(whereSql);
+        }
+        return sql;
     }
 
+    /**
+     * 实体获取表名
+     */
     private static String tableByClazz(Object obj) {
         Class<?> entityClass = obj.getClass();
         if (TABLE_CACHE.containsKey(entityClass)) {
