@@ -14,11 +14,17 @@ import java.util.Set;
 public interface BaseMapper<T> {
 
     /**
-     * 保存操作
+     * 插入操作
      */
     @InsertProvider(type = BaseProvider.class)
     @Options(useGeneratedKeys = true, keyColumn = "id", keyProperty = "id")
     int insert(T entity);
+
+    /**
+     * 批量插入操作
+     */
+    @InsertProvider(type = BaseProvider.class)
+    int batchInsert(@Param("list") List<T> list);
 
     /**
      * 查询操作

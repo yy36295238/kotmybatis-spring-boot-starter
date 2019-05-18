@@ -7,12 +7,16 @@ import java.util.List;
 
 public interface MapperService<T> extends BaseMapperManager<T> {
 
-//    BaseMapperManager gt(String col, Object val);
 
     /**
      * 保存操作
      */
     int insert(T entity);
+
+    /**
+     * 批量插入
+     */
+    int batchInsert(List<T> list);
 
     int save(T entity);
 

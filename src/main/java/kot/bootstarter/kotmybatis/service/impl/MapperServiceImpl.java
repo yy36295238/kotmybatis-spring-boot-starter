@@ -36,6 +36,11 @@ public class MapperServiceImpl<T> implements MapperService<T> {
     }
 
     @Override
+    public int batchInsert(List<T> list) {
+        return baseMapper.batchInsert(list);
+    }
+
+    @Override
     public int save(T entity) {
         final Object id = KotBeanUtils.fieldVal("id", entity);
         if (id == null) {
