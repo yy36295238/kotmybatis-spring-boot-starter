@@ -92,6 +92,18 @@ public class KotMybatisApplicationTests {
         final int update = userService.newUpdate().between("id", 13, 15).update(User.builder().password("123").build(), User.builder().userStatus(1).build());
         System.err.println(update);
     }
+    
+    @Test
+public void batchInsert() {
+    List<User> list = new ArrayList<>();
+    long start = System.currentTimeMillis();
+    for (int i = 0; i < 3000; i++) {
+        list.add(new User("wukong" + i, "123" + i, 1, 999L, new Date()));
+    }
+    System.out.println("size:" + list.size());
+    final int count = userService.newUpdate().batchInsert(list);
+    System.err.println(count + " cost time:" + (System.currentTimeMillis() - start));
+}
 
 }
 ```
