@@ -198,7 +198,7 @@ CREATE TABLE `user` (
 # mysql
 spring.datasource.type=com.alibaba.druid.pool.DruidDataSource
 spring.datasource.driverClassName=com.mysql.jdbc.Driver
-spring.datasource.url=jdbc:mysql://localhost:3306/kakrot?useUnicode=true&characterEncoding=utf8&useSSL=false
+spring.datasource.url=jdbc:mysql://localhost:3306/test?useUnicode=true&characterEncoding=utf8&useSSL=false
 spring.datasource.username=root
 spring.datasource.password=123456
 #mybatis-驼峰
