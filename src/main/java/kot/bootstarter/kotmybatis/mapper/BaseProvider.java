@@ -59,6 +59,7 @@ public class BaseProvider<T> implements ProviderMethodResolver {
 
     public String batchInsert(Map<String, List<T>> map) {
         final List<T> list = map.get("list");
+        Assert.notEmpty(list, "[batch insert list size must be > 0]");
         final T entity = list.get(0);
 
         String columns = COLUMN_CACHE.get(entity.getClass());
