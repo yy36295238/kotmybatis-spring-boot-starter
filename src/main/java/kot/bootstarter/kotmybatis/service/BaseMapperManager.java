@@ -21,6 +21,8 @@ public interface BaseMapperManager<T> {
 
     MapperService<T> neq(String key, Object value);
 
+    MapperService<T> in(String key, String values);
+
     MapperService<T> in(String key, Object[] values);
 
     MapperService<T> in(String key, Collection<?> values);
