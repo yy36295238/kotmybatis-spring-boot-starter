@@ -128,7 +128,8 @@ public class MapperServiceImpl<T> implements MapperService<T> {
     }
 
     @Override
-    public MapperService<T> orderBy(String... sortKey) {
+    public MapperService<T> orderBy(String orderBy) {
+        conditionMap.put("orderBy", orderBy);
         return this;
     }
 
@@ -144,7 +145,8 @@ public class MapperServiceImpl<T> implements MapperService<T> {
         return this;
     }
 
-    @Override public MapperService<T> in(String key, String values) {
+    @Override
+    public MapperService<T> in(String key, String values) {
         Assert.notNull(values, "in values must be not null");
         in(key, values.split(CT.SPILT));
         return this;

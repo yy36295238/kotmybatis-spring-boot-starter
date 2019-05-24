@@ -15,7 +15,7 @@ public interface BaseMapperManager<T> {
 
     MapperService<T> fields(List<String> fields);
 
-    MapperService<T> orderBy(String... sortKey);
+    MapperService<T> orderBy(String orderBy);
 
     MapperService<T> eq(String key, Object value);
 

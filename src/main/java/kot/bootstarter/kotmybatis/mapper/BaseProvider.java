@@ -104,9 +104,6 @@ public class BaseProvider<T> implements ProviderMethodResolver {
         final Page page = (Page) map.get("page");
         int pageIndex = (page.getPageIndex() - 1) * page.getPageSize();
         final SQL sql = selectGeneralSql(map, new SQL(), "*");
-        if (StringUtils.isNotBlank(page.getOrderBy())) {
-            sql.ORDER_BY(page.getOrderBy() + CT.SPACE + page.getSort());
-        }
         return sql.toString() + CT.LIMIT + pageIndex + CT.SPILT + page.getPageSize();
     }
 
@@ -276,12 +273,15 @@ public class BaseProvider<T> implements ProviderMethodResolver {
     private SQL selectGeneralSql(Map<String, Object> map, SQL sql, String column) {
         final T entity = (T) map.get(CT.ALIAS_ENTITY);
         final String conditionSql = (String) map.get(CT.SQL_CONDITION);
+        final Map<String, Object> conditionMap = (Map<String, Object>) map.get(CT.ALIAS_CONDITION);
         final Set<String> columns = map.containsKey(CT.COLUMNS) ? (Set<String>) map.get(CT.COLUMNS) : null;
-        sql.SELECT(CollectionUtils.isEmpty(columns) ? column : String.join(CT.SPILT, columns))
-                .FROM(tableName(entity));
+        sql.SELECT(CollectionUtils.isEmpty(columns) ? column : String.join(CT.SPILT, columns)).FROM(tableName(entity));
         final String whereSql = whereBuilder(entity, conditionSql);
         if (StringUtils.isNotBlank(whereSql)) {
             sql.WHERE(whereSql);
+        }
+        if (conditionMap.containsKey(CT.ORDER_BY)) {
+            sql.ORDER_BY(conditionMap.get(CT.ORDER_BY).toString());
         }
         return sql;
     }

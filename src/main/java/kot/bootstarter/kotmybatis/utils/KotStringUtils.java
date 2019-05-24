@@ -2,11 +2,12 @@ package kot.bootstarter.kotmybatis.utils;
 
 import kot.bootstarter.kotmybatis.common.CT;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.Collection;
 
 @Slf4j
-public class KotStringUtils {
+public class KotStringUtils extends StringUtils {
 
     private static final char UNDERLINE_CHAR = '_';
 
