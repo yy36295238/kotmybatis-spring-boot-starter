@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.yyself</groupId>
     <artifactId>kotmybatis-spring-boot-starter</artifactId>
-    <version>1.0.1-SNAPSHOT</version>
+    <version>1.0.1-RELEASE</version>
 
     <name>${project.groupId}:${project.artifactId}</name>
     <description>mybatis utils</description>
@@ -106,6 +106,20 @@
                     </execution>
                 </executions>
             </plugin>
+
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-release-plugin</artifactId>
+                <version>2.5.3</version>
+                <configuration>
+                    <tagNameFormat>v@{project.version}</tagNameFormat>
+                    <autoVersionSubmodules>true</autoVersionSubmodules>
+                    <preparationGoals>clean deploy</preparationGoals>
+                </configuration>
+            </plugin>
+
+
         </plugins>
     </build>
 
