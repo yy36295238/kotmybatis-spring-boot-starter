@@ -66,13 +66,24 @@ public class MapperServiceImpl<T> implements MapperService<T> {
 
     @Override
     public Page<T> selectPage(Page<T> page, T entity) {
+        boolean containsOrderBy = false;
         final String conditionSql = conditionSql();
-        final int count = baseMapper.count(conditionSql, conditionMap, entity);
-        if (count > 0) {
-            final List<T> list = baseMapper.selectPage(columns, conditionSql, page, conditionMap, entity);
-            page.setData(list);
-            page.setTotal(count);
+        // count 不拼接 order by
+        Object orderBy = conditionMap.get(CT.ORDER_BY);
+        if (conditionMap.containsKey(CT.ORDER_BY)) {
+            containsOrderBy = true;
+            conditionMap.remove(CT.ORDER_BY);
         }
+        final int count = baseMapper.count(conditionSql, conditionMap, entity);
+        if (count <= 0) {
+            return page;
+        }
+        if (containsOrderBy) {
+            conditionMap.put(CT.ORDER_BY, orderBy);
+        }
+        final List<T> list = baseMapper.selectPage(columns, conditionSql, page, conditionMap, entity);
+        page.setData(list);
+        page.setTotal(count);
         return page;
     }
 

@@ -97,7 +97,6 @@ public class BaseProvider<T> implements ProviderMethodResolver {
     }
 
     public String count(Map<String, Object> map) {
-        map.remove(CT.ORDER_BY);
         return selectGeneralSql(map, new SQL(), "COUNT(*)").toString();
     }
 
