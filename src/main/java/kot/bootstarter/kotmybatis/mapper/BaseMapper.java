@@ -44,6 +44,9 @@ public interface BaseMapper<T> {
     @DeleteProvider(type = BaseProvider.class)
     int delete(@Param(CT.COLUMNS) Set<String> columns, @Param(CT.SQL_CONDITION) String conditionList, @Param(CT.ALIAS_CONDITION) Map<String, Object> conditionMap, @Param(CT.ALIAS_ENTITY) T entity);
 
+    @DeleteProvider(type = BaseProvider.class)
+    int logicDelete(@Param(CT.COLUMNS) Set<String> columns, @Param(CT.SQL_CONDITION) String conditionList, @Param(CT.ALIAS_CONDITION) Map<String, Object> conditionMap, @Param(CT.ALIAS_ENTITY) T entity);
+
     /**
      * 更新操作
      */
@@ -52,4 +55,6 @@ public interface BaseMapper<T> {
 
     @UpdateProvider(type = BaseProvider.class)
     int update(@Param(CT.COLUMNS) Set<String> columns, @Param(CT.SQL_CONDITION) String conditionList, @Param(CT.ALIAS_CONDITION) Map<String, Object> conditionMap, @Param(CT.ALIAS_ENTITY) T entity, @Param(CT.SET_ENTITY) T setEntity);
+
+
 }

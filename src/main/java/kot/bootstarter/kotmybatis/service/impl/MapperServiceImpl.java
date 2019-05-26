@@ -93,6 +93,11 @@ public class MapperServiceImpl<T> implements MapperService<T> {
     }
 
     @Override
+    public void logicDelete(T entity) {
+        baseMapper.logicDelete(columns, conditionSql(), conditionMap, entity);
+    }
+
+    @Override
     public int updateById(T entity) {
         return baseMapper.updateById(entity);
     }

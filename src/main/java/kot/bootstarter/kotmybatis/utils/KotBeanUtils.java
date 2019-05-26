@@ -7,6 +7,7 @@ import org.springframework.util.ReflectionUtils;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -84,6 +85,18 @@ public class KotBeanUtils {
         }
         FIELDS_CACHE.put(clazz, list);
         return list;
+    }
+
+    public static Object cast(Type type, String val) {
+        final String typeName = type.getTypeName();
+        if ("java.lang.Integer".equals(typeName) || "int".equals(typeName)) {
+            return Integer.valueOf(val);
+        } else if ("java.lang.Long".equals(typeName) || "long".equals(typeName)) {
+            return Long.valueOf(val);
+        } else if ("java.lang.Boolean".equals(typeName) || "boolean".equals(typeName)) {
+            return Boolean.valueOf(val);
+        }
+        return val;
     }
 
     @Data

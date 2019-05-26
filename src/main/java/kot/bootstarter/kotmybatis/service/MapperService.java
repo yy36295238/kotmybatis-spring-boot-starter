@@ -36,6 +36,8 @@ public interface MapperService<T> extends BaseMapperManager<T> {
      */
     int delete(T entity);
 
+    void logicDelete(T entity);
+
     /**
      * 更新操作
      */
