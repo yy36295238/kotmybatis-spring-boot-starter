@@ -4,10 +4,12 @@ import kot.bootstarter.kotmybatis.common.CT;
 import kot.bootstarter.kotmybatis.common.Page;
 import kot.bootstarter.kotmybatis.enums.ConditionEnum;
 import kot.bootstarter.kotmybatis.mapper.BaseMapper;
+import kot.bootstarter.kotmybatis.properties.KotMybatisProperties;
 import kot.bootstarter.kotmybatis.service.MapperService;
 import kot.bootstarter.kotmybatis.utils.KotBeanUtils;
 import kot.bootstarter.kotmybatis.utils.KotStringUtils;
 import kot.bootstarter.kotmybatis.utils.MapUtils;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.Assert;
 
 import java.util.*;
@@ -17,12 +19,16 @@ import java.util.stream.Collectors;
  * @author YangYu
  * 通用实现
  */
+@Slf4j
 public class MapperServiceImpl<T> implements MapperService<T> {
 
     private BaseMapper<T> baseMapper;
 
-    MapperServiceImpl(BaseMapper<T> baseMapper) {
+    private KotMybatisProperties properties;
+
+    MapperServiceImpl(BaseMapper<T> baseMapper, KotMybatisProperties properties) {
         this.baseMapper = baseMapper;
+        this.properties = properties;
     }
 
     /**
@@ -51,37 +57,36 @@ public class MapperServiceImpl<T> implements MapperService<T> {
 
     @Override
     public T findOne(T entity) {
-        return baseMapper.findOne(columns, conditionSql(), conditionMap, entity);
+        return (T) execute(null, entity, null, MethodEnum.FIND_ONE);
     }
 
     @Override
     public List<T> list(T entity) {
-        return baseMapper.list(columns, conditionSql(), conditionMap, entity);
+        return (List<T>) execute(null, entity, null, MethodEnum.LIST);
     }
 
     @Override
     public Integer count(T entity) {
-        return baseMapper.count(conditionSql(), conditionMap, entity);
+        return (Integer) execute(null, entity, null, MethodEnum.COUNT);
     }
 
     @Override
     public Page<T> selectPage(Page<T> page, T entity) {
         boolean containsOrderBy = false;
-        final String conditionSql = conditionSql();
         // count 不拼接 order by
         Object orderBy = conditionMap.get(CT.ORDER_BY);
         if (conditionMap.containsKey(CT.ORDER_BY)) {
             containsOrderBy = true;
             conditionMap.remove(CT.ORDER_BY);
         }
-        final int count = baseMapper.count(conditionSql, conditionMap, entity);
+        final int count = count(entity);
         if (count <= 0) {
             return page;
         }
         if (containsOrderBy) {
             conditionMap.put(CT.ORDER_BY, orderBy);
         }
-        final List<T> list = baseMapper.selectPage(columns, conditionSql, page, conditionMap, entity);
+        final List<T> list = (List<T>) execute(page, entity, null, MethodEnum.SELECT_PAGE);
         page.setData(list);
         page.setTotal(count);
         return page;
@@ -93,18 +98,57 @@ public class MapperServiceImpl<T> implements MapperService<T> {
     }
 
     @Override
-    public void logicDelete(T entity) {
-        baseMapper.logicDelete(columns, conditionSql(), conditionMap, entity);
+    public int logicDelete(T whereEntity) {
+        if (!properties.isLogicDelete()) {
+            throw new RuntimeException("Configuration logic delete is close! If you want it, You can set 'kot.mybatis.logicDelete=true'");
+        }
+        try {
+            T setEntity = (T) whereEntity.getClass().newInstance();
+            KotBeanUtils.logicFiled(setEntity, true);
+            return update(setEntity, whereEntity);
+        } catch (Exception e) {
+            throw new RuntimeException("", e);
+        }
+
     }
 
     @Override
     public int updateById(T entity) {
-        return baseMapper.updateById(entity);
+        return (int) execute(null, entity, null, MethodEnum.UPDATE_BY_ID);
     }
 
     @Override
     public int update(T setEntity, T whereEntity) {
-        return baseMapper.update(columns, conditionSql(), conditionMap, whereEntity, setEntity);
+        return (int) execute(null, whereEntity, setEntity, MethodEnum.UPDATE);
+    }
+
+    private Object execute(Page<T> page, T whereEntity, T setEntity, MethodEnum methodEnum) {
+        // 开启逻辑删除
+        if (properties.isLogicDelete()) {
+            // 包含逻辑删除注解
+            final KotBeanUtils.KV kv = KotBeanUtils.logicFiled(whereEntity, false);
+            if (kv != null) {
+                this.neq(KotStringUtils.camel2Underline(kv.getFiled()), kv.getVal());
+            }
+        }
+        conditionSql = KotStringUtils.isBlank(conditionSql) ? conditionSql() : conditionSql;
+        switch (methodEnum) {
+            case FIND_ONE:
+                return baseMapper.findOne(columns, conditionSql, conditionMap, whereEntity);
+            case LIST:
+                return baseMapper.list(columns, conditionSql, conditionMap, whereEntity);
+            case SELECT_PAGE:
+                return baseMapper.selectPage(columns, conditionSql, page, conditionMap, whereEntity);
+            case COUNT:
+                return baseMapper.count(conditionSql, conditionMap, whereEntity);
+            case UPDATE:
+                return baseMapper.update(columns, conditionSql, conditionMap, whereEntity, setEntity);
+            case UPDATE_BY_ID:
+                return baseMapper.updateById(whereEntity);
+            default:
+                throw new RuntimeException("not find method: " + methodEnum);
+        }
+
     }
 
     private Map<String, Object> map(Map<String, Object> conditionMap) {
@@ -129,6 +173,7 @@ public class MapperServiceImpl<T> implements MapperService<T> {
     private Map<String, Object> likeMap = null;
     private Map<String, Object> nullMap = null;
     private Map<String, Object> conditionMap = new HashMap<>();
+    private String conditionSql = "";
 
     @Override
     public MapperService<T> fields(String field) {
@@ -303,7 +348,8 @@ public class MapperServiceImpl<T> implements MapperService<T> {
             MapUtils.aliasKey(orMap, newKey(ConditionEnum.OR));
             conditionMap.putAll(orMap);
         }
-        return sqlBuilder.toString();
+        conditionSql = sqlBuilder.toString();
+        return conditionSql;
     }
 
     /**
@@ -353,5 +399,7 @@ public class MapperServiceImpl<T> implements MapperService<T> {
         return conditionEnum.name() + "_%s";
     }
 
-
+    enum MethodEnum {
+        FIND_ONE, LIST, COUNT, SELECT_PAGE, UPDATE, UPDATE_BY_ID
+    }
 }

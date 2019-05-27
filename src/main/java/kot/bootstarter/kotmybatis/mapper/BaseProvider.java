@@ -1,7 +1,5 @@
 package kot.bootstarter.kotmybatis.mapper;
 
-import kot.bootstarter.kotmybatis.annotation.Delete;
-import kot.bootstarter.kotmybatis.annotation.Exist;
 import kot.bootstarter.kotmybatis.annotation.TableName;
 import kot.bootstarter.kotmybatis.common.CT;
 import kot.bootstarter.kotmybatis.common.Page;
@@ -14,7 +12,6 @@ import org.apache.ibatis.jdbc.SQL;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Map;
@@ -116,15 +113,6 @@ public class BaseProvider<T> implements ProviderMethodResolver {
         return new SQL().DELETE_FROM(tableName(entity)).WHERE(whereBuilder).toString();
     }
 
-    public String logicDelete(Map<String, Object> map) {
-        final T entity = (T) map.get(CT.ALIAS_ENTITY);
-        final String conditionSql = (String) map.get(CT.SQL_CONDITION);
-        final String whereBuilder = whereBuilder(entity, conditionSql);
-        Assert.hasLength(whereBuilder, "[delete must be contain where condition!!!]");
-        return new SQL().DELETE_FROM(tableName(entity)).WHERE(whereBuilder).toString();
-    }
-
-
     public String updateById(T entity) {
         final Object id = KotBeanUtils.fieldVal("id", entity);
         Assert.notNull(id, "id is null");
@@ -169,7 +157,7 @@ public class BaseProvider<T> implements ProviderMethodResolver {
     private static void entitySqlBuilder(StringBuilder whereBuilder, Object entity) {
         final List<KotBeanUtils.FieldWarpper> fieldsList = KotBeanUtils.fields(entity);
         for (KotBeanUtils.FieldWarpper fields : fieldsList) {
-            if (!fieldIsExist(fields)) {
+            if (!KotBeanUtils.fieldIsExist(fields)) {
                 continue;
             }
             Field field = fields.getField();
@@ -177,7 +165,7 @@ public class BaseProvider<T> implements ProviderMethodResolver {
             Object val;
             try {
                 val = field.get(entity);
-            } catch (Exception e) {
+            } catch (IllegalAccessException e) {
                 throw new RuntimeException("", e);
             }
             if (val != null) {
@@ -198,7 +186,7 @@ public class BaseProvider<T> implements ProviderMethodResolver {
         try {
             final List<KotBeanUtils.FieldWarpper> fieldsList = KotBeanUtils.fields(entity);
             for (KotBeanUtils.FieldWarpper fields : fieldsList) {
-                if (!fieldIsExist(fields)) {
+                if (!KotBeanUtils.fieldIsExist(fields)) {
                     continue;
                 }
                 Field field = fields.getField();
@@ -236,7 +224,7 @@ public class BaseProvider<T> implements ProviderMethodResolver {
         // 获取实体属性
         final List<KotBeanUtils.FieldWarpper> fieldsList = KotBeanUtils.fields(entity);
         fieldsList.forEach(field -> {
-            if (fieldIsExist(field)) {
+            if (KotBeanUtils.fieldIsExist(field)) {
                 String column = KotStringUtils.camel2Underline(field.getField().getName());
                 columnsBuilder.append("`").append(column).append("`").append(CT.SPILT);
             }
@@ -258,7 +246,7 @@ public class BaseProvider<T> implements ProviderMethodResolver {
         try {
             final List<KotBeanUtils.FieldWarpper> fieldsList = KotBeanUtils.fields(entity);
             for (KotBeanUtils.FieldWarpper fields : fieldsList) {
-                if (!fieldIsExist(fields)) {
+                if (!KotBeanUtils.fieldIsExist(fields)) {
                     continue;
                 }
                 Field field = fields.getField();
@@ -315,35 +303,6 @@ public class BaseProvider<T> implements ProviderMethodResolver {
         }
         TABLE_CACHE.put(entityClass, tableName);
         return tableName;
-    }
-
-    /**
-     * 数据库表中包含此列
-     */
-    private static boolean fieldIsExist(KotBeanUtils.FieldWarpper fields) {
-        final Annotation[] annotations = fields.getAnnotations();
-        for (Annotation annotation : annotations) {
-            if (annotation instanceof Exist && !((Exist) annotation).value()) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private static void setLogicFiled(Object entity) throws IllegalAccessException {
-        final List<KotBeanUtils.FieldWarpper> fieldsList = KotBeanUtils.fields(entity);
-        for (KotBeanUtils.FieldWarpper fieldWarpper : fieldsList) {
-            final Annotation[] annotations = fieldWarpper.getAnnotations();
-            for (Annotation annotation : annotations) {
-                if (annotation instanceof Delete) {
-                    final String logicVal = ((Delete) annotation).value();
-                    Assert.notNull(logicVal, "@Delete value is empty");
-                    final Field field = fieldWarpper.getField();
-                    field.setAccessible(true);
-                    field.set(entity, KotBeanUtils.cast(field.getGenericType(), logicVal));
-                }
-            }
-        }
     }
 
 
