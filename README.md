@@ -9,8 +9,6 @@
 > - 可以参考样例工程：[https://github.com/yy36295238/kot-mybatis](https://github.com/yy36295238/kot-mybatis/)
 > - 包含一些通用的操作方法
 
----------------------
-
 ### 更新日志
 - 2019-05-30
 > 增加插件List<Map>结果的数据，转换为驼峰  
