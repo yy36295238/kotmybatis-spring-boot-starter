@@ -3,7 +3,7 @@
 ### 官方文档  
 [http://www.yyself.com](http://www.yyself.com)
 
-### 说明  
+### 工具介绍  
 > - 基于springboot-2.1.4, mybatis-spring-boot-starter-2.0.1   
 > - 通用代码无需手写，使用代码生成工具快速生成：[https://github.com/yy36295238/kot-mybatis-generator](https://github.com/yy36295238/kot-mybatis-generator/)  
 > - 可以参考样例工程：[https://github.com/yy36295238/kot-mybatis](https://github.com/yy36295238/kot-mybatis/)
