@@ -7,3 +7,13 @@ mybatis 增强工具，包含通用的增删改查功能
 > - 包含一些通用的操作方法
 
 ### 官方文档：[http://www.yyself.com](http://www.yyself.com)
+
+# 更新日志
+- 2019-05-30
+> 增加插件List<Map>结果的数据，转换为驼峰  
+
+**开启驼峰转换**
+```properties
+# List<Map>结果转驼峰
+kot.mybatis.under-sore-to-camel=true
+```
