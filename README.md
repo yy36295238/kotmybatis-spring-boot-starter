@@ -20,3 +20,12 @@ mybatis 增强工具，包含通用的增删改查功能
 # List<Map>结果转驼峰
 kot.mybatis.under-sore-to-camel=true
 ```
+
+- 2019-05-25
+> 增加逻辑删除功能
+
+**开启逻辑删除**
+```properties
+# 逻辑删除
+kot.mybatis.logic-delete=true
+```
