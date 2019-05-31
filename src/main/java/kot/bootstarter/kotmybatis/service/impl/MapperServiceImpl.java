@@ -22,6 +22,12 @@ import java.util.stream.Collectors;
 @Slf4j
 public class MapperServiceImpl<T> implements MapperService<T> {
 
+    private Page<T> page;
+    private T whereEntity;
+    private T setEntity;
+    private MethodEnum methodEnum;
+    private boolean setNull;
+
     private BaseMapper<T> baseMapper;
 
     private KotMybatisProperties properties;
@@ -52,26 +58,35 @@ public class MapperServiceImpl<T> implements MapperService<T> {
         if (id == null) {
             return insert(entity);
         }
-        return updateById(entity);
+        return updateById(entity, true);
     }
 
     @Override
     public T findOne(T entity) {
-        return (T) execute(null, entity, null, MethodEnum.FIND_ONE);
+        this.methodEnum = MethodEnum.FIND_ONE;
+        this.whereEntity = entity;
+        return (T) execute();
     }
 
     @Override
     public List<T> list(T entity) {
-        return (List<T>) execute(null, entity, null, MethodEnum.LIST);
+        this.methodEnum = MethodEnum.LIST;
+        this.whereEntity = entity;
+        return (List<T>) execute();
     }
 
     @Override
     public Integer count(T entity) {
-        return (Integer) execute(null, entity, null, MethodEnum.COUNT);
+        this.methodEnum = MethodEnum.COUNT;
+        this.whereEntity = entity;
+        return (Integer) execute();
     }
 
     @Override
     public Page<T> selectPage(Page<T> page, T entity) {
+        this.methodEnum = MethodEnum.SELECT_PAGE;
+        this.whereEntity = entity;
+        this.page = page;
         boolean containsOrderBy = false;
         // count 不拼接 order by
         Object orderBy = conditionMap.get(CT.ORDER_BY);
@@ -86,7 +101,8 @@ public class MapperServiceImpl<T> implements MapperService<T> {
         if (containsOrderBy) {
             conditionMap.put(CT.ORDER_BY, orderBy);
         }
-        final List<T> list = (List<T>) execute(page, entity, null, MethodEnum.SELECT_PAGE);
+
+        final List<T> list = (List<T>) execute();
         page.setData(list);
         page.setTotal(count);
         return page;
@@ -114,39 +130,56 @@ public class MapperServiceImpl<T> implements MapperService<T> {
 
     @Override
     public int updateById(T entity) {
-        return (int) execute(null, entity, null, MethodEnum.UPDATE_BY_ID);
+        return updateById(entity, false);
+    }
+
+    @Override
+    public int updateById(T entity, boolean setNull) {
+        this.methodEnum = MethodEnum.UPDATE_BY_ID;
+        this.whereEntity = entity;
+        this.setNull = setNull;
+        return (int) execute();
     }
 
     @Override
     public int update(T setEntity, T whereEntity) {
-        return (int) execute(null, whereEntity, setEntity, MethodEnum.UPDATE);
+        return update(setEntity, whereEntity, false);
     }
 
-    private Object execute(Page<T> page, T whereEntity, T setEntity, MethodEnum methodEnum) {
+    @Override
+    public int update(T setEntity, T whereEntity, boolean setNull) {
+        this.methodEnum = MethodEnum.UPDATE;
+        this.whereEntity = whereEntity;
+        this.setEntity = setEntity;
+        this.setNull = setNull;
+        return (int) execute();
+    }
+
+    private Object execute() {
         // 开启逻辑删除
         if (properties.isLogicDelete()) {
             // 包含逻辑删除注解
-            final KotBeanUtils.KV kv = KotBeanUtils.logicFiled(whereEntity, false);
+            final KotBeanUtils.KV kv = KotBeanUtils.logicFiled(this.whereEntity, false);
             if (kv != null) {
                 this.neq(KotStringUtils.camel2Underline(kv.getFiled()), kv.getVal());
             }
         }
         conditionSql = KotStringUtils.isBlank(conditionSql) ? conditionSql() : conditionSql;
-        switch (methodEnum) {
+        switch (this.methodEnum) {
             case FIND_ONE:
-                return baseMapper.findOne(columns, conditionSql, conditionMap, whereEntity);
+                return baseMapper.findOne(columns, conditionSql, conditionMap, this.whereEntity);
             case LIST:
-                return baseMapper.list(columns, conditionSql, conditionMap, whereEntity);
+                return baseMapper.list(columns, conditionSql, conditionMap, this.whereEntity);
             case SELECT_PAGE:
-                return baseMapper.selectPage(columns, conditionSql, page, conditionMap, whereEntity);
+                return baseMapper.selectPage(columns, conditionSql, this.page, conditionMap, this.whereEntity);
             case COUNT:
-                return baseMapper.count(conditionSql, conditionMap, whereEntity);
+                return baseMapper.count(conditionSql, conditionMap, this.whereEntity);
             case UPDATE:
-                return baseMapper.update(columns, conditionSql, conditionMap, whereEntity, setEntity);
+                return baseMapper.update(columns, conditionSql, conditionMap, this.whereEntity, this.setEntity, this.setNull);
             case UPDATE_BY_ID:
-                return baseMapper.updateById(whereEntity);
+                return baseMapper.updateById(this.whereEntity, this.setNull);
             default:
-                throw new RuntimeException("not find method: " + methodEnum);
+                throw new RuntimeException("not find method: " + this.methodEnum);
         }
 
     }
@@ -400,6 +433,10 @@ public class MapperServiceImpl<T> implements MapperService<T> {
     }
 
     enum MethodEnum {
+        /**
+         * 调用函数
+         */
         FIND_ONE, LIST, COUNT, SELECT_PAGE, UPDATE, UPDATE_BY_ID
     }
+
 }

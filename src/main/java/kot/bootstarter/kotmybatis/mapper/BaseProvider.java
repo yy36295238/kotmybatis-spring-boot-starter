@@ -113,19 +113,22 @@ public class BaseProvider<T> implements ProviderMethodResolver {
         return new SQL().DELETE_FROM(tableName(entity)).WHERE(whereBuilder).toString();
     }
 
-    public String updateById(T entity) {
+    public String updateById(Map<String, Object> map) {
+        final T entity = (T) map.get(CT.ALIAS_ENTITY);
+        final boolean setNull = (boolean) map.get("setNull");
         final Object id = KotBeanUtils.fieldVal("id", entity);
         Assert.notNull(id, "id is null");
-        return new SQL().UPDATE(tableName(entity)).SET(updateSqlBuilder(entity)).WHERE("id=#{id}").toString();
+        return new SQL().UPDATE(tableName(entity)).SET(updateSqlBuilder(entity, setNull)).WHERE("id=#{id}").toString();
     }
 
     public String update(Map<String, Object> map) {
         final T whereEntity = (T) map.get(CT.ALIAS_ENTITY);
         final T setEntity = (T) map.get(CT.SET_ENTITY);
+        final boolean setNull = (boolean) map.get("setNull");
         final String conditionSql = (String) map.get(CT.SQL_CONDITION);
         final String whereBuilder = whereBuilder(whereEntity, conditionSql);
         Assert.hasLength(whereBuilder, "[update must be contain where condition!!!]");
-        return new SQL().UPDATE(tableName(whereEntity)).SET(updateSqlBuilder(setEntity, CT.SET_ENTITY)).WHERE(whereBuilder).toString();
+        return new SQL().UPDATE(tableName(whereEntity)).SET(updateSqlBuilder(setEntity, CT.SET_ENTITY, setNull)).WHERE(whereBuilder).toString();
     }
 
     /*
@@ -237,11 +240,11 @@ public class BaseProvider<T> implements ProviderMethodResolver {
     /**
      * 更新SQL
      */
-    private static String updateSqlBuilder(Object entity) {
-        return updateSqlBuilder(entity, "");
+    private static String updateSqlBuilder(Object entity, boolean setNull) {
+        return updateSqlBuilder(entity, "", setNull);
     }
 
-    private static String updateSqlBuilder(Object entity, String alias) {
+    private static String updateSqlBuilder(Object entity, String alias, boolean setNull) {
         StringBuilder columnsBuilder = new StringBuilder();
         try {
             final List<KotBeanUtils.FieldWarpper> fieldsList = KotBeanUtils.fields(entity);
@@ -252,7 +255,7 @@ public class BaseProvider<T> implements ProviderMethodResolver {
                 Field field = fields.getField();
                 field.setAccessible(true);
                 Object val = field.get(entity);
-                if (val != null && !"id".equals(field.getName())) {
+                if ((setNull || val != null) && !"id".equals(field.getName())) {
                     String column = KotStringUtils.camel2Underline(field.getName());
                     columnsBuilder.append("`").append(column).append("`").append("=");
                     String aliasField = StringUtils.isBlank(alias) ? field.getName() : alias + CT.DOT + field.getName();

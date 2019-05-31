@@ -43,6 +43,10 @@ public interface MapperService<T> extends BaseMapperManager<T> {
      */
     int updateById(T entity);
 
+    int updateById(T entity, boolean setNull);
+
     int update(T setEntity, T whereEntity);
+
+    int update(T setEntity, T whereEntity, boolean setNull);
 
 }
