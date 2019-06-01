@@ -84,7 +84,6 @@ public class MapperServiceImpl<T> implements MapperService<T> {
 
     @Override
     public Page<T> selectPage(Page<T> page, T entity) {
-        this.methodEnum = MethodEnum.SELECT_PAGE;
         this.whereEntity = entity;
         this.page = page;
         boolean containsOrderBy = false;
@@ -101,7 +100,7 @@ public class MapperServiceImpl<T> implements MapperService<T> {
         if (containsOrderBy) {
             conditionMap.put(CT.ORDER_BY, orderBy);
         }
-
+        this.methodEnum = MethodEnum.SELECT_PAGE;
         final List<T> list = (List<T>) execute();
         page.setData(list);
         page.setTotal(count);

@@ -116,9 +116,7 @@ public class BaseProvider<T> implements ProviderMethodResolver {
     public String updateById(Map<String, Object> map) {
         final T entity = (T) map.get(CT.ALIAS_ENTITY);
         final boolean setNull = (boolean) map.get("setNull");
-        final Object id = KotBeanUtils.fieldVal("id", entity);
-        Assert.notNull(id, "id is null");
-        return new SQL().UPDATE(tableName(entity)).SET(updateSqlBuilder(entity, setNull)).WHERE("id=#{id}").toString();
+        return new SQL().UPDATE(tableName(entity)).SET(updateSqlBuilder(entity, CT.ALIAS_ENTITY, setNull)).WHERE("id=#{" + CT.ALIAS_ENTITY + CT.DOT + "id}").toString();
     }
 
     public String update(Map<String, Object> map) {
