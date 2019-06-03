@@ -27,11 +27,13 @@ public class KotTableInfo {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    static class TableInfo {
+    public static class TableInfo {
         private String tableName;
         private String primaryKey;
         private String columns;
         private List<FieldWrapper> fields;
+        private Map<String, String> fieldColumnMap;
+        private Map<String, String> columnFieldMap;
     }
 
     /**
@@ -71,6 +73,8 @@ public class KotTableInfo {
         Assert.notNull(tableNameAnnotation, String.format("实体:[%s],注解:[@TableName]不存在", entityClass.getSimpleName()));
 
         List<FieldWrapper> fields = new ArrayList<>();
+        Map<String, String> fieldColumnMap = new HashMap<>();
+        Map<String, String> columnFieldMap = new HashMap<>();
         StringBuilder columnBuilder = new StringBuilder();
         final Field[] declaredFields = entityClass.getDeclaredFields();
         for (Field field : declaredFields) {
@@ -88,18 +92,21 @@ public class KotTableInfo {
                 column = annotation.value();
                 // 封装列
                 columnBuilder.append(column).append(CT.SPILT);
+                // 属性和列映射
+                fieldColumnMap.put(field.getName(), column);
+                columnFieldMap.put(column, field.getName());
             }
             Map<Class<?>, Annotation> annotationMap = new HashMap<>();
-
             Arrays.stream(field.getDeclaredAnnotations()).forEach(a -> annotationMap.put(a.getClass(), a));
-            Assert.hasLength(columnBuilder.toString(), "属性注解:[@Column]一个都不存在");
             final FieldWrapper fieldWrapper = new FieldWrapper(field, field.getName(), column, annotationMap);
             fields.add(fieldWrapper);
-            columnBuilder.deleteCharAt(columnBuilder.lastIndexOf(CT.SPILT));
-
         }
+        Assert.hasLength(columnBuilder.toString(), "属性注解:[@Column]一个都不存在");
+        columnBuilder.deleteCharAt(columnBuilder.lastIndexOf(CT.SPILT));
 
-        return builder.tableName(tableNameAnnotation.value()).fields(fields).columns(columnBuilder.toString()).build();
+        return builder.tableName(tableNameAnnotation.value()).fields(fields).columns(columnBuilder.toString())
+                .fieldColumnMap(fieldColumnMap).columnFieldMap(columnFieldMap).build();
+
 
     }
 
@@ -132,5 +139,6 @@ public class KotTableInfo {
         }
         return null;
     }
+
 
 }

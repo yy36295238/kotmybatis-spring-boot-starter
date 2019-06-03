@@ -13,8 +13,8 @@ import kot.bootstarter.kotmybatis.utils.MapUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.Assert;
 
+import java.lang.reflect.Field;
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * @author YangYu
@@ -33,8 +33,6 @@ public class MapperServiceImpl<T> implements MapperService<T> {
     private BaseMapper<T> baseMapper;
 
     private KotMybatisProperties properties;
-
-    private KotTableInfo kotTableInfo;
 
     MapperServiceImpl(BaseMapper<T> baseMapper, KotMybatisProperties properties) {
         this.baseMapper = baseMapper;
@@ -222,7 +220,7 @@ public class MapperServiceImpl<T> implements MapperService<T> {
     private Map<String, Object> nullMap = null;
     private Map<String, Object> conditionMap = new HashMap<>();
     private String conditionSql = "";
-    StringBuilder sqlBuilder = new StringBuilder();
+    private StringBuilder sqlBuilder = new StringBuilder();
 
     @Override
     public MapperService<T> fields(String field) {
@@ -340,6 +338,11 @@ public class MapperServiceImpl<T> implements MapperService<T> {
      * 实际查询条件
      */
     private String conditionSql() {
+
+        // 实体条件
+        this.entityCondition();
+
+        // 链式条件
         if (eqMap != null) {
             eqMap.forEach((k, v) -> sqlBuilder(sqlBuilder, ConditionEnum.EQ, k, v));
             MapUtils.aliasKey(eqMap, newKey(ConditionEnum.EQ));
@@ -400,6 +403,24 @@ public class MapperServiceImpl<T> implements MapperService<T> {
         return conditionSql;
     }
 
+    private void entityCondition() {
+        if (this.entity != null) {
+            final KotTableInfo.TableInfo tableInfo = KotTableInfo.get(entity);
+            tableInfo.getFields().forEach(fieldWrapper -> {
+                final Field field = fieldWrapper.getField();
+                field.setAccessible(true);
+                try {
+                    final Object val = field.get(entity);
+                    if (val != null) {
+                        (eqMap = map(eqMap)).put(tableInfo.getFieldColumnMap().get(field.getName()), val);
+                    }
+                } catch (IllegalAccessException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+        }
+    }
+
     /**
      * 构建SQL语句
      */
@@ -411,17 +432,16 @@ public class MapperServiceImpl<T> implements MapperService<T> {
         }
         sqlBuilder.append(k).append(conditionEnum.oper);
         k = conditionEnum.name() + "_" + k;
-        final String collect;
         // in 查询拼接SQL语法
         if (conditionEnum == ConditionEnum.IN || conditionEnum == ConditionEnum.NIN) {
             Collection collection = (Collection) v;
-            if (isString(collection)) {
-                Collection<String> strings = (Collection<String>) v;
-                collect = strings.stream().map(c -> c = "'" + c + "'").collect(Collectors.joining(",", CT.LEFT_KUO, CT.RIGHT_KUO));
-            } else {
-                collect = KotStringUtils.joinSplit(collection, CT.LEFT_KUO, CT.RIGHT_KUO);
+            StringBuilder inBuilder = new StringBuilder(CT.OPEN);
+            for (int i = 0; i < collection.size(); i++) {
+                inBuilder.append("#{").append(CT.ALIAS_CONDITION).append(k).append("[").append(i).append("]").append("}").append(CT.SPILT);
             }
-            sqlBuilder.append(collect);
+            inBuilder.deleteCharAt(inBuilder.lastIndexOf(CT.SPILT));
+            inBuilder.append(CT.CLOSE);
+            sqlBuilder.append(inBuilder.toString());
         } else if (conditionEnum == ConditionEnum.LIKE) {
             // like 查询拼接SQL语法
             sqlBuilder.append("CONCAT").append("('%',").append("#{").append(CT.ALIAS_CONDITION).append(CT.DOT).append(k).append("},").append("'%')");
@@ -431,13 +451,6 @@ public class MapperServiceImpl<T> implements MapperService<T> {
             // 默认查询拼接SQL语法
             sqlBuilder.append("#{").append(CT.ALIAS_CONDITION).append(CT.DOT).append(k).append("}");
         }
-    }
-
-    private boolean isString(Collection<?> collection) {
-        for (Object o : collection) {
-            return o instanceof String;
-        }
-        return false;
     }
 
     /**

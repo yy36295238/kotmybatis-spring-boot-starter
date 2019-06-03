@@ -23,8 +23,8 @@ public class CT {
     public static final String SQL_CONDITION = "conditionSql";
     public static final String COLUMNS = "columns";
 
-    public static final String LEFT_KUO = "(";
-    public static final String RIGHT_KUO = ")";
+    public static final String OPEN = "(";
+    public static final String CLOSE = ")";
     public static final String ORDER_BY = "orderBy";
 
 

@@ -23,13 +23,4 @@ public enum ConditionEnum {
     ConditionEnum(String oper) {
         this.oper = oper;
     }
-
-    public static boolean contains(ConditionEnum conditionEnum) {
-        for (ConditionEnum anEnum : ConditionEnum.values()) {
-            if (anEnum == conditionEnum) {
-                return true;
-            }
-        }
-        return false;
-    }
 }
