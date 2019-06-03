@@ -1,6 +1,5 @@
 package kot.bootstarter.kotmybatis.mapper;
 
-import kot.bootstarter.kotmybatis.annotation.Exist;
 import kot.bootstarter.kotmybatis.annotation.TableName;
 import kot.bootstarter.kotmybatis.common.CT;
 import kot.bootstarter.kotmybatis.common.Page;
@@ -13,7 +12,6 @@ import org.apache.ibatis.jdbc.SQL;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Map;
@@ -115,19 +113,20 @@ public class BaseProvider<T> implements ProviderMethodResolver {
         return new SQL().DELETE_FROM(tableName(entity)).WHERE(whereBuilder).toString();
     }
 
-    public String updateById(T entity) {
-        final Object id = KotBeanUtils.fieldVal("id", entity);
-        Assert.notNull(id, "id is null");
-        return new SQL().UPDATE(tableName(entity)).SET(updateSqlBuilder(entity)).WHERE("id=#{id}").toString();
+    public String updateById(Map<String, Object> map) {
+        final T entity = (T) map.get(CT.ALIAS_ENTITY);
+        final boolean setNull = (boolean) map.get("setNull");
+        return new SQL().UPDATE(tableName(entity)).SET(updateSqlBuilder(entity, CT.ALIAS_ENTITY, setNull)).WHERE("id=#{" + CT.ALIAS_ENTITY + CT.DOT + "id}").toString();
     }
 
     public String update(Map<String, Object> map) {
         final T whereEntity = (T) map.get(CT.ALIAS_ENTITY);
         final T setEntity = (T) map.get(CT.SET_ENTITY);
+        final boolean setNull = (boolean) map.get("setNull");
         final String conditionSql = (String) map.get(CT.SQL_CONDITION);
         final String whereBuilder = whereBuilder(whereEntity, conditionSql);
         Assert.hasLength(whereBuilder, "[update must be contain where condition!!!]");
-        return new SQL().UPDATE(tableName(whereEntity)).SET(updateSqlBuilder(setEntity, CT.SET_ENTITY)).WHERE(whereBuilder).toString();
+        return new SQL().UPDATE(tableName(whereEntity)).SET(updateSqlBuilder(setEntity, CT.SET_ENTITY, setNull)).WHERE(whereBuilder).toString();
     }
 
     /*
@@ -159,7 +158,7 @@ public class BaseProvider<T> implements ProviderMethodResolver {
     private static void entitySqlBuilder(StringBuilder whereBuilder, Object entity) {
         final List<KotBeanUtils.FieldWarpper> fieldsList = KotBeanUtils.fields(entity);
         for (KotBeanUtils.FieldWarpper fields : fieldsList) {
-            if (!fieldIsExist(fields)) {
+            if (!KotBeanUtils.fieldIsExist(fields)) {
                 continue;
             }
             Field field = fields.getField();
@@ -167,7 +166,7 @@ public class BaseProvider<T> implements ProviderMethodResolver {
             Object val;
             try {
                 val = field.get(entity);
-            } catch (Exception e) {
+            } catch (IllegalAccessException e) {
                 throw new RuntimeException("", e);
             }
             if (val != null) {
@@ -188,7 +187,7 @@ public class BaseProvider<T> implements ProviderMethodResolver {
         try {
             final List<KotBeanUtils.FieldWarpper> fieldsList = KotBeanUtils.fields(entity);
             for (KotBeanUtils.FieldWarpper fields : fieldsList) {
-                if (!fieldIsExist(fields)) {
+                if (!KotBeanUtils.fieldIsExist(fields)) {
                     continue;
                 }
                 Field field = fields.getField();
@@ -226,7 +225,7 @@ public class BaseProvider<T> implements ProviderMethodResolver {
         // 获取实体属性
         final List<KotBeanUtils.FieldWarpper> fieldsList = KotBeanUtils.fields(entity);
         fieldsList.forEach(field -> {
-            if (fieldIsExist(field)) {
+            if (KotBeanUtils.fieldIsExist(field)) {
                 String column = KotStringUtils.camel2Underline(field.getField().getName());
                 columnsBuilder.append("`").append(column).append("`").append(CT.SPILT);
             }
@@ -239,22 +238,22 @@ public class BaseProvider<T> implements ProviderMethodResolver {
     /**
      * 更新SQL
      */
-    private static String updateSqlBuilder(Object entity) {
-        return updateSqlBuilder(entity, "");
+    private static String updateSqlBuilder(Object entity, boolean setNull) {
+        return updateSqlBuilder(entity, "", setNull);
     }
 
-    private static String updateSqlBuilder(Object entity, String alias) {
+    private static String updateSqlBuilder(Object entity, String alias, boolean setNull) {
         StringBuilder columnsBuilder = new StringBuilder();
         try {
             final List<KotBeanUtils.FieldWarpper> fieldsList = KotBeanUtils.fields(entity);
             for (KotBeanUtils.FieldWarpper fields : fieldsList) {
-                if (!fieldIsExist(fields)) {
+                if (!KotBeanUtils.fieldIsExist(fields)) {
                     continue;
                 }
                 Field field = fields.getField();
                 field.setAccessible(true);
                 Object val = field.get(entity);
-                if (val != null && !"id".equals(field.getName())) {
+                if ((setNull || val != null) && !"id".equals(field.getName())) {
                     String column = KotStringUtils.camel2Underline(field.getName());
                     columnsBuilder.append("`").append(column).append("`").append("=");
                     String aliasField = StringUtils.isBlank(alias) ? field.getName() : alias + CT.DOT + field.getName();
@@ -307,17 +306,5 @@ public class BaseProvider<T> implements ProviderMethodResolver {
         return tableName;
     }
 
-    /**
-     * 数据库表中包含此列
-     */
-    private static boolean fieldIsExist(KotBeanUtils.FieldWarpper fields) {
-        final Annotation[] annotations = fields.getAnnotations();
-        for (Annotation annotation : annotations) {
-            if (annotation instanceof Exist && !((Exist) annotation).value()) {
-                return false;
-            }
-        }
-        return true;
-    }
 
 }

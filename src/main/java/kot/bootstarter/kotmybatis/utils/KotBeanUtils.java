@@ -1,12 +1,16 @@
 package kot.bootstarter.kotmybatis.utils;
 
+import kot.bootstarter.kotmybatis.annotation.Delete;
+import kot.bootstarter.kotmybatis.annotation.Exist;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.util.Assert;
 import org.springframework.util.ReflectionUtils;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -86,11 +90,72 @@ public class KotBeanUtils {
         return list;
     }
 
+    public static Object cast(Type type, String val) {
+        final String typeName = type.getTypeName();
+        if ("java.lang.Integer".equals(typeName) || "int".equals(typeName)) {
+            return Integer.valueOf(val);
+        } else if ("java.lang.Long".equals(typeName) || "long".equals(typeName)) {
+            return Long.valueOf(val);
+        } else if ("java.lang.Boolean".equals(typeName) || "boolean".equals(typeName)) {
+            return Boolean.valueOf(val);
+        }
+        return val;
+    }
+
+    /**
+     * 数据库表中包含此列
+     */
+    public static boolean fieldIsExist(KotBeanUtils.FieldWarpper fields) {
+        final Annotation[] annotations = fields.getAnnotations();
+        for (Annotation annotation : annotations) {
+            if (annotation instanceof Exist && !((Exist) annotation).value()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * 逻辑删除注解
+     */
+    public static KV logicFiled(Object entity, boolean set) {
+        final List<KotBeanUtils.FieldWarpper> fieldsList = KotBeanUtils.fields(entity);
+        for (KotBeanUtils.FieldWarpper fieldWarpper : fieldsList) {
+            final Annotation[] annotations = fieldWarpper.getAnnotations();
+            for (Annotation annotation : annotations) {
+                if (annotation instanceof Delete) {
+                    final String logicVal = ((Delete) annotation).value();
+                    Assert.notNull(logicVal, "@Delete value is empty");
+                    final Field field = fieldWarpper.getField();
+                    field.setAccessible(true);
+                    final Object val = cast(field.getGenericType(), logicVal);
+                    if (set) {
+                        try {
+                            field.set(entity, val);
+                        } catch (IllegalAccessException e) {
+                            throw new RuntimeException("", e);
+                        }
+                    }
+                    return new KV(field.getName(), val);
+                }
+            }
+        }
+        return null;
+    }
+
     @Data
     @AllArgsConstructor
     @NoArgsConstructor
     public static class FieldWarpper {
         private Field field;
         private Annotation[] annotations;
+    }
+
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class KV {
+        private String filed;
+        private Object val;
     }
 }

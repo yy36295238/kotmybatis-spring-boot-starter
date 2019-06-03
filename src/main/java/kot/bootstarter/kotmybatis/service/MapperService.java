@@ -36,11 +36,17 @@ public interface MapperService<T> extends BaseMapperManager<T> {
      */
     int delete(T entity);
 
+    int logicDelete(T entity);
+
     /**
      * 更新操作
      */
     int updateById(T entity);
 
+    int updateById(T entity, boolean setNull);
+
     int update(T setEntity, T whereEntity);
+
+    int update(T setEntity, T whereEntity, boolean setNull);
 
 }

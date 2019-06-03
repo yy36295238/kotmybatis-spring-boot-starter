@@ -26,4 +26,9 @@ public class CT {
     public static final String LEFT_KUO = "(";
     public static final String RIGHT_KUO = ")";
     public static final String ORDER_BY = "orderBy";
+
+
+    public static final String UNDER_SORE_TO_CAMEL = "underSoreToCamel";
+
+
 }
