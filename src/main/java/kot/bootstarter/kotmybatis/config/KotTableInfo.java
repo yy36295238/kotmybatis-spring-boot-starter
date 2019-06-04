@@ -5,6 +5,7 @@ import kot.bootstarter.kotmybatis.annotation.Delete;
 import kot.bootstarter.kotmybatis.annotation.ID;
 import kot.bootstarter.kotmybatis.annotation.TableName;
 import kot.bootstarter.kotmybatis.common.CT;
+import kot.bootstarter.kotmybatis.utils.KotStringUtils;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,6 +22,9 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class KotTableInfo {
 
+    /**
+     * 表信息缓存
+     */
     private static final Map<Class<?>, TableInfo> TABLE_INFO_CACHE = new ConcurrentHashMap<>();
 
     @Data
@@ -29,9 +33,29 @@ public class KotTableInfo {
     @AllArgsConstructor
     public static class TableInfo {
         private String tableName;
+        /**
+         * 主键字段
+         */
         private String primaryKey;
+        /**
+         * 表列集合:(id,name,create_time...)
+         */
         private String columns;
+        /**
+         * 逻辑删除字段
+         */
+        private FieldWrapper logicDelFieldWrapper;
+        /**
+         * 属性集合
+         */
         private List<FieldWrapper> fields;
+        /**
+         * 表列属性
+         */
+        private List<FieldWrapper> columnFields;
+        /**
+         * 字段和属性关系
+         */
         private Map<String, String> fieldColumnMap;
         private Map<String, String> columnFieldMap;
     }
@@ -46,7 +70,9 @@ public class KotTableInfo {
         private Field field;
         private String fieldName;
         private String column;
-        private Map<Class<?>, Annotation> annotationMap;
+        private List<Annotation> annotations;
+        private String deleteAnnoVal;
+
     }
 
     /**
@@ -73,11 +99,15 @@ public class KotTableInfo {
         Assert.notNull(tableNameAnnotation, String.format("实体:[%s],注解:[@TableName]不存在", entityClass.getSimpleName()));
 
         List<FieldWrapper> fields = new ArrayList<>();
+        List<FieldWrapper> columnFields = new ArrayList<>();
         Map<String, String> fieldColumnMap = new HashMap<>();
         Map<String, String> columnFieldMap = new HashMap<>();
         StringBuilder columnBuilder = new StringBuilder();
         final Field[] declaredFields = entityClass.getDeclaredFields();
         for (Field field : declaredFields) {
+
+            Map<Class<?>, Annotation> annotationMap = new HashMap<>();
+            List<Annotation> annotations = new ArrayList<>();
 
             // 获取主键
             final ID id = field.getAnnotation(ID.class);
@@ -91,28 +121,35 @@ public class KotTableInfo {
             if (annotation != null) {
                 column = annotation.value();
                 // 封装列
-                columnBuilder.append(column).append(CT.SPILT);
+                columnBuilder.append("`").append(column).append("`").append(CT.SPILT);
                 // 属性和列映射
                 fieldColumnMap.put(field.getName(), column);
                 columnFieldMap.put(column, field.getName());
+                columnFields.add(new FieldWrapper(field, field.getName(), column, annotations, null));
             }
-            Map<Class<?>, Annotation> annotationMap = new HashMap<>();
-            Arrays.stream(field.getDeclaredAnnotations()).forEach(a -> annotationMap.put(a.getClass(), a));
-            final FieldWrapper fieldWrapper = new FieldWrapper(field, field.getName(), column, annotationMap);
-            fields.add(fieldWrapper);
+
+            String finalColumn = column;
+            Arrays.stream(field.getDeclaredAnnotations()).forEach(anno -> {
+                // 封装逻辑删除字段
+                if (anno instanceof Delete) {
+                    builder.logicDelFieldWrapper(new FieldWrapper(field, field.getName(), finalColumn, annotations, ((Delete) anno).value()));
+                }
+                annotations.add(anno);
+            });
+            fields.add(new FieldWrapper(field, field.getName(), column, annotations, null));
         }
-        Assert.hasLength(columnBuilder.toString(), "属性注解:[@Column]一个都不存在");
-        columnBuilder.deleteCharAt(columnBuilder.lastIndexOf(CT.SPILT));
+        Assert.hasLength(columnBuilder.toString(), "[实体: " + entityClass.getSimpleName() + "]中属性注解:[@Column]一个都不存在");
+        KotStringUtils.delLastChat(columnBuilder);
 
         return builder.tableName(tableNameAnnotation.value()).fields(fields).columns(columnBuilder.toString())
-                .fieldColumnMap(fieldColumnMap).columnFieldMap(columnFieldMap).build();
+                .fieldColumnMap(fieldColumnMap).columnFieldMap(columnFieldMap).columnFields(columnFields).build();
 
 
     }
 
 
     public static String primaryKey(Object entity) {
-        return get(entity.getClass()).getPrimaryKey();
+        return get(entity).getPrimaryKey();
     }
 
     public static Field getField(Object entity, String column) {
@@ -125,17 +162,14 @@ public class KotTableInfo {
         return null;
     }
 
-    public static String getDeleteAnno(Object entity) {
-        final List<FieldWrapper> fields = TABLE_INFO_CACHE.get(entity).getFields();
-        for (FieldWrapper fieldWrapper : fields) {
-            if (fieldWrapper.getAnnotationMap() == null) {
-                return null;
+    /**
+     * 逻辑删除注解属性
+     */
+    public static Delete getDeleteAnno(List<Annotation> list) {
+        for (Annotation anno : list) {
+            if (anno instanceof Delete) {
+                return (Delete) anno;
             }
-            final Delete annotation = (Delete) fieldWrapper.getAnnotationMap().get(Delete.class);
-            if (annotation != null) {
-                return annotation.value();
-            }
-
         }
         return null;
     }

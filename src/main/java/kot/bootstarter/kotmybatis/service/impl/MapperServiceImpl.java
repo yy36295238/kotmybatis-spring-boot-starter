@@ -29,6 +29,7 @@ public class MapperServiceImpl<T> implements MapperService<T> {
     private MethodEnum methodEnum;
     private boolean setNull;
     private List<T> batchList;
+    private boolean skipLogicDelMethod = false;
 
     private BaseMapper<T> baseMapper;
 
@@ -46,6 +47,7 @@ public class MapperServiceImpl<T> implements MapperService<T> {
      */
     @Override
     public int insert(T entity) {
+        this.skipLogicDelMethod = true;
         this.methodEnum = MethodEnum.INSERT;
         this.entity = entity;
         return (int) execute();
@@ -53,6 +55,7 @@ public class MapperServiceImpl<T> implements MapperService<T> {
 
     @Override
     public int batchInsert(List<T> batchList) {
+        this.skipLogicDelMethod = true;
         this.methodEnum = MethodEnum.BATCH_INSERT;
         this.batchList = batchList;
         return (int) execute();
@@ -60,6 +63,7 @@ public class MapperServiceImpl<T> implements MapperService<T> {
 
     @Override
     public int save(T entity) {
+        this.skipLogicDelMethod = true;
         final String primaryKey = KotTableInfo.primaryKey(entity);
         final Object id = KotBeanUtils.fieldVal(primaryKey, entity);
         if (id == null) {
@@ -116,19 +120,24 @@ public class MapperServiceImpl<T> implements MapperService<T> {
 
     @Override
     public int delete(T entity) {
+        this.skipLogicDelMethod = true;
         this.methodEnum = MethodEnum.DELETE;
+        this.entity = entity;
         return (int) execute();
     }
 
     @Override
-    public int logicDelete(T whereEntity) {
+    public int logicDelete(T entity) {
+        this.entity = entity;
         if (!properties.isLogicDelete()) {
             throw new RuntimeException("未启用逻辑删除功能,如果想启用,添加配置:[kot.mybatis.logicDelete=true]");
         }
+        final KotTableInfo.FieldWrapper fieldWrapper = logicDel(true);
+        Assert.notNull(fieldWrapper, "未找到逻辑删除注解@Delete");
         try {
-            T setEntity = (T) whereEntity.getClass().newInstance();
-            KotBeanUtils.logicFiled(setEntity, true);
-            return update(setEntity, whereEntity);
+            T setEntity = (T) entity.getClass().newInstance();
+            KotBeanUtils.setField(fieldWrapper.getField(), setEntity, KotBeanUtils.cast(fieldWrapper.getField().getGenericType(), fieldWrapper.getDeleteAnnoVal()));
+            return update(setEntity, entity);
         } catch (Exception e) {
             throw new RuntimeException("", e);
         }
@@ -164,13 +173,10 @@ public class MapperServiceImpl<T> implements MapperService<T> {
 
     private Object execute() {
         // 开启逻辑删除
-        if (properties.isLogicDelete()) {
-            // 包含逻辑删除注解
-            final KotBeanUtils.KV kv = KotBeanUtils.logicFiled(this.entity, false);
-            if (kv != null) {
-                this.neq(KotStringUtils.camel2Underline(kv.getFiled()), kv.getVal());
-            }
+        if (!this.skipLogicDelMethod) {
+            logicDel(false);
         }
+
         conditionSql = KotStringUtils.isBlank(conditionSql) ? conditionSql() : conditionSql;
         switch (this.methodEnum) {
             case INSERT:
@@ -195,6 +201,23 @@ public class MapperServiceImpl<T> implements MapperService<T> {
                 throw new RuntimeException("not find method: " + this.methodEnum);
         }
 
+    }
+
+    private KotTableInfo.FieldWrapper logicDel(boolean isLogicDelete) {
+        if (!properties.isLogicDelete()) {
+            return null;
+        }
+        final KotTableInfo.FieldWrapper logicDelFieldWrapper = KotTableInfo.get(entity).getLogicDelFieldWrapper();
+        if (logicDelFieldWrapper == null) {
+            return null;
+        }
+        if (logicDelFieldWrapper.getDeleteAnnoVal() == null) {
+            return null;
+        }
+        if (!isLogicDelete) {
+            this.neq(logicDelFieldWrapper.getColumn(), KotBeanUtils.cast(logicDelFieldWrapper.getField().getGenericType(), logicDelFieldWrapper.getDeleteAnnoVal()));
+        }
+        return logicDelFieldWrapper;
     }
 
     private Map<String, Object> map(Map<String, Object> conditionMap) {
@@ -399,7 +422,7 @@ public class MapperServiceImpl<T> implements MapperService<T> {
             MapUtils.aliasKey(orMap, newKey(ConditionEnum.OR));
             conditionMap.putAll(orMap);
         }
-        conditionSql = sqlBuilder.toString();
+        conditionSql = KotStringUtils.removeFirstAndOr(sqlBuilder.toString());
         return conditionSql;
     }
 
@@ -437,7 +460,7 @@ public class MapperServiceImpl<T> implements MapperService<T> {
             Collection collection = (Collection) v;
             StringBuilder inBuilder = new StringBuilder(CT.OPEN);
             for (int i = 0; i < collection.size(); i++) {
-                inBuilder.append("#{").append(CT.ALIAS_CONDITION).append(k).append("[").append(i).append("]").append("}").append(CT.SPILT);
+                inBuilder.append("#{").append(CT.ALIAS_CONDITION).append(CT.DOT).append(k).append("[").append(i).append("]").append("}").append(CT.SPILT);
             }
             inBuilder.deleteCharAt(inBuilder.lastIndexOf(CT.SPILT));
             inBuilder.append(CT.CLOSE);
