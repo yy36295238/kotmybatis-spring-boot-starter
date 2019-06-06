@@ -11,6 +11,8 @@ import java.lang.reflect.Type;
  */
 public class KotBeanUtils {
 
+    protected KotBeanUtils() {
+    }
 
     /**
      * 类包含注解
