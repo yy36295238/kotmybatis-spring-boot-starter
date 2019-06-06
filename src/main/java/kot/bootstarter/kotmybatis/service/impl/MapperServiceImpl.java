@@ -4,11 +4,13 @@ import kot.bootstarter.kotmybatis.common.CT;
 import kot.bootstarter.kotmybatis.common.Page;
 import kot.bootstarter.kotmybatis.config.KotTableInfo;
 import kot.bootstarter.kotmybatis.enums.ConditionEnum;
+import kot.bootstarter.kotmybatis.lambda.Property;
 import kot.bootstarter.kotmybatis.mapper.BaseMapper;
 import kot.bootstarter.kotmybatis.properties.KotMybatisProperties;
 import kot.bootstarter.kotmybatis.service.MapperService;
 import kot.bootstarter.kotmybatis.utils.KotBeanUtils;
 import kot.bootstarter.kotmybatis.utils.KotStringUtils;
+import kot.bootstarter.kotmybatis.utils.LambdaUtils;
 import kot.bootstarter.kotmybatis.utils.MapUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.Assert;
@@ -30,6 +32,7 @@ public class MapperServiceImpl<T> implements MapperService<T> {
     private boolean setNull;
     private List<T> batchList;
     private boolean skipLogicDelMethod = false;
+    private Map<String, String> fieldColumnMap;
 
     private BaseMapper<T> baseMapper;
 
@@ -246,9 +249,14 @@ public class MapperServiceImpl<T> implements MapperService<T> {
     private StringBuilder sqlBuilder = new StringBuilder();
 
     @Override
-    public MapperService<T> fields(String field) {
-        Assert.notNull(field, "field is null");
-        columns.add(field);
+    public MapperService<T> fields(String... field) {
+        fields(Arrays.asList(field));
+        return this;
+    }
+
+    @Override
+    public MapperService<T> fields(Property... properties) {
+        fields(LambdaUtils.fieldNames(properties));
         return this;
     }
 
@@ -256,6 +264,11 @@ public class MapperServiceImpl<T> implements MapperService<T> {
     public MapperService<T> fields(List<String> fields) {
         columns.addAll(fields);
         return this;
+    }
+
+    @Override
+    public MapperService<T> fieldsByLambda(List<Property> fields) {
+        return fields(LambdaUtils.fieldNames(fields));
     }
 
     @Override
@@ -271,9 +284,19 @@ public class MapperServiceImpl<T> implements MapperService<T> {
     }
 
     @Override
+    public MapperService<T> eq(Property property, Object value) {
+        return eq(LambdaUtils.fieldName(property), value);
+    }
+
+    @Override
     public MapperService<T> neq(String key, Object value) {
         (neqMap = map(neqMap)).put(key, value);
         return this;
+    }
+
+    @Override
+    public MapperService<T> neq(Property property, Object value) {
+        return neq(LambdaUtils.fieldName(property), value);
     }
 
     @Override
@@ -284,9 +307,19 @@ public class MapperServiceImpl<T> implements MapperService<T> {
     }
 
     @Override
+    public MapperService<T> in(Property property, Object value) {
+        return null;
+    }
+
+    @Override
     public MapperService<T> in(String key, Object[] values) {
         (inMap = map(inMap)).put(key, Arrays.asList(values));
         return this;
+    }
+
+    @Override
+    public MapperService<T> in(Property property, Object[] values) {
+        return null;
     }
 
     @Override
@@ -296,9 +329,19 @@ public class MapperServiceImpl<T> implements MapperService<T> {
     }
 
     @Override
+    public MapperService<T> in(Property property, Collection<?> values) {
+        return null;
+    }
+
+    @Override
     public MapperService<T> nin(String key, Object[] values) {
         (ninMap = map(ninMap)).put(key, Arrays.asList(values));
         return this;
+    }
+
+    @Override
+    public MapperService<T> nin(Property property, Object[] values) {
+        return null;
     }
 
     @Override
@@ -308,15 +351,30 @@ public class MapperServiceImpl<T> implements MapperService<T> {
     }
 
     @Override
+    public MapperService<T> nin(Property property, Collection<?> values) {
+        return null;
+    }
+
+    @Override
     public MapperService<T> lt(String key, Object value) {
         (ltMap = map(ltMap)).put(key, value);
         return this;
     }
 
     @Override
+    public MapperService<T> lt(Property property, Object value) {
+        return null;
+    }
+
+    @Override
     public MapperService<T> gt(String key, Object value) {
         (gtMap = map(gtMap)).put(key, value);
         return this;
+    }
+
+    @Override
+    public MapperService<T> gt(Property property, Object value) {
+        return null;
     }
 
 
@@ -327,9 +385,19 @@ public class MapperServiceImpl<T> implements MapperService<T> {
     }
 
     @Override
+    public MapperService<T> lte(Property property, Object value) {
+        return null;
+    }
+
+    @Override
     public MapperService<T> gte(String key, Object value) {
         (gteMap = map(gteMap)).put(key, value);
         return this;
+    }
+
+    @Override
+    public MapperService<T> gte(Property property, Object value) {
+        return null;
     }
 
     @Override
@@ -339,9 +407,19 @@ public class MapperServiceImpl<T> implements MapperService<T> {
     }
 
     @Override
+    public MapperService<T> or(Property property, Object value) {
+        return null;
+    }
+
+    @Override
     public MapperService<T> like(String key, Object value) {
         (likeMap = map(likeMap)).put(key, value);
         return this;
+    }
+
+    @Override
+    public MapperService<T> like(Property property, Object value) {
+        return null;
     }
 
     @Override
@@ -352,9 +430,19 @@ public class MapperServiceImpl<T> implements MapperService<T> {
     }
 
     @Override
+    public MapperService<T> between(Property property, Object left, Object right) {
+        return null;
+    }
+
+    @Override
     public MapperService<T> isNull(String key) {
         (nullMap = map(nullMap)).put(key, null);
         return this;
+    }
+
+    @Override
+    public MapperService<T> isNull(Property property) {
+        return null;
     }
 
     /**
@@ -365,65 +453,56 @@ public class MapperServiceImpl<T> implements MapperService<T> {
         // 实体条件
         this.entityCondition();
 
+        this.fieldColumnMap = KotTableInfo.get(this.entity).getFieldColumnMap();
+
         // 链式条件
         if (eqMap != null) {
-            eqMap.forEach((k, v) -> sqlBuilder(sqlBuilder, ConditionEnum.EQ, k, v));
-            MapUtils.aliasKey(eqMap, newKey(ConditionEnum.EQ));
-            conditionMap.putAll(eqMap);
+            conditionMapBuilder(ConditionEnum.EQ, eqMap);
         }
         if (neqMap != null) {
-            neqMap.forEach((k, v) -> sqlBuilder(sqlBuilder, ConditionEnum.NEQ, k, v));
-            MapUtils.aliasKey(neqMap, newKey(ConditionEnum.NEQ));
-            conditionMap.putAll(neqMap);
+            conditionMapBuilder(ConditionEnum.NEQ, neqMap);
         }
         if (inMap != null) {
-            inMap.forEach((k, v) -> sqlBuilder(sqlBuilder, ConditionEnum.IN, k, v));
-            MapUtils.aliasKey(inMap, newKey(ConditionEnum.IN));
-            conditionMap.putAll(inMap);
+            conditionMapBuilder(ConditionEnum.IN, inMap);
         }
         if (ninMap != null) {
-            ninMap.forEach((k, v) -> sqlBuilder(sqlBuilder, ConditionEnum.NIN, k, v));
-            MapUtils.aliasKey(ninMap, newKey(ConditionEnum.NIN));
-            conditionMap.putAll(ninMap);
+            conditionMapBuilder(ConditionEnum.NIN, ninMap);
         }
         if (ltMap != null) {
-            ltMap.forEach((k, v) -> sqlBuilder(sqlBuilder, ConditionEnum.LT, k, v));
-            MapUtils.aliasKey(ltMap, newKey(ConditionEnum.LT));
-            conditionMap.putAll(ltMap);
+            conditionMapBuilder(ConditionEnum.LT, ltMap);
         }
         if (gtMap != null) {
-            gtMap.forEach((k, v) -> sqlBuilder(sqlBuilder, ConditionEnum.GT, k, v));
-            MapUtils.aliasKey(gtMap, newKey(ConditionEnum.GT));
-            conditionMap.putAll(gtMap);
+            conditionMapBuilder(ConditionEnum.GT, gtMap);
         }
         if (lteMap != null) {
-            lteMap.forEach((k, v) -> sqlBuilder(sqlBuilder, ConditionEnum.LTE, k, v));
-            MapUtils.aliasKey(lteMap, newKey(ConditionEnum.LTE));
-            conditionMap.putAll(lteMap);
+            conditionMapBuilder(ConditionEnum.LTE, lteMap);
         }
         if (gteMap != null) {
-            gteMap.forEach((k, v) -> sqlBuilder(sqlBuilder, ConditionEnum.GTE, k, v));
-            MapUtils.aliasKey(gteMap, newKey(ConditionEnum.GTE));
-            conditionMap.putAll(gteMap);
+            conditionMapBuilder(ConditionEnum.GTE, gteMap);
         }
         if (likeMap != null) {
-            likeMap.forEach((k, v) -> sqlBuilder(sqlBuilder, ConditionEnum.LIKE, k, v));
-            MapUtils.aliasKey(likeMap, newKey(ConditionEnum.LIKE));
-            conditionMap.putAll(likeMap);
+            conditionMapBuilder(ConditionEnum.LIKE, likeMap);
         }
         if (nullMap != null) {
-            nullMap.forEach((k, v) -> sqlBuilder(sqlBuilder, ConditionEnum.NULL, k, v));
-            MapUtils.aliasKey(nullMap, newKey(ConditionEnum.NULL));
-            conditionMap.putAll(nullMap);
+            conditionMapBuilder(ConditionEnum.NULL, nullMap);
         }
         // 放在最后，否则拼接sql会有问题
         if (orMap != null) {
-            orMap.forEach((k, v) -> sqlBuilder(sqlBuilder, ConditionEnum.OR, k, v));
-            MapUtils.aliasKey(orMap, newKey(ConditionEnum.OR));
-            conditionMap.putAll(orMap);
+            conditionMapBuilder(ConditionEnum.OR, orMap);
         }
         conditionSql = KotStringUtils.removeFirstAndOr(sqlBuilder.toString());
         return conditionSql;
+    }
+
+    private void conditionMapBuilder(ConditionEnum conditionEnum, Map<String, Object> logicMap) {
+        logicMap.forEach((k, v) -> {
+            if (fieldColumnMap.containsKey(k)) {
+                k = fieldColumnMap.get(k);
+            }
+            sqlBuilder(sqlBuilder, conditionEnum, k, v);
+        });
+        MapUtils.aliasKey(logicMap, newKey(conditionEnum));
+        conditionMap.putAll(logicMap);
     }
 
     private void entityCondition() {
