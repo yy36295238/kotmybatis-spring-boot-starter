@@ -33,7 +33,7 @@ public interface BaseMapperManager<T> {
 
     MapperService<T> in(String key, String values);
 
-    MapperService<T> in(Property property, Object value);
+    MapperService<T> in(Property property, String value);
 
     MapperService<T> in(String key, Object[] values);
 

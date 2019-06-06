@@ -301,14 +301,12 @@ public class MapperServiceImpl<T> implements MapperService<T> {
 
     @Override
     public MapperService<T> in(String key, String values) {
-        Assert.notNull(values, "in values must be not null");
-        in(key, values.split(CT.SPILT));
-        return this;
+        return in(key, values.split(CT.SPILT));
     }
 
     @Override
-    public MapperService<T> in(Property property, Object value) {
-        return null;
+    public MapperService<T> in(Property property, String values) {
+        return in(LambdaUtils.fieldName(property), values.split(CT.SPILT));
     }
 
     @Override
@@ -319,7 +317,7 @@ public class MapperServiceImpl<T> implements MapperService<T> {
 
     @Override
     public MapperService<T> in(Property property, Object[] values) {
-        return null;
+        return in(LambdaUtils.fieldName(property), values);
     }
 
     @Override
@@ -330,7 +328,7 @@ public class MapperServiceImpl<T> implements MapperService<T> {
 
     @Override
     public MapperService<T> in(Property property, Collection<?> values) {
-        return null;
+        return in(LambdaUtils.fieldName(property), values);
     }
 
     @Override
@@ -341,7 +339,7 @@ public class MapperServiceImpl<T> implements MapperService<T> {
 
     @Override
     public MapperService<T> nin(Property property, Object[] values) {
-        return null;
+        return nin(LambdaUtils.fieldName(property), values);
     }
 
     @Override
@@ -352,7 +350,7 @@ public class MapperServiceImpl<T> implements MapperService<T> {
 
     @Override
     public MapperService<T> nin(Property property, Collection<?> values) {
-        return null;
+        return nin(LambdaUtils.fieldName(property), values);
     }
 
     @Override
@@ -363,7 +361,7 @@ public class MapperServiceImpl<T> implements MapperService<T> {
 
     @Override
     public MapperService<T> lt(Property property, Object value) {
-        return null;
+        return lt(LambdaUtils.fieldName(property), value);
     }
 
     @Override
@@ -374,7 +372,7 @@ public class MapperServiceImpl<T> implements MapperService<T> {
 
     @Override
     public MapperService<T> gt(Property property, Object value) {
-        return null;
+        return gt(LambdaUtils.fieldName(property), value);
     }
 
 
@@ -386,7 +384,7 @@ public class MapperServiceImpl<T> implements MapperService<T> {
 
     @Override
     public MapperService<T> lte(Property property, Object value) {
-        return null;
+        return lte(LambdaUtils.fieldName(property), value);
     }
 
     @Override
@@ -397,7 +395,7 @@ public class MapperServiceImpl<T> implements MapperService<T> {
 
     @Override
     public MapperService<T> gte(Property property, Object value) {
-        return null;
+        return gte(LambdaUtils.fieldName(property), value);
     }
 
     @Override
@@ -408,7 +406,7 @@ public class MapperServiceImpl<T> implements MapperService<T> {
 
     @Override
     public MapperService<T> or(Property property, Object value) {
-        return null;
+        return or(LambdaUtils.fieldName(property), value);
     }
 
     @Override
@@ -419,7 +417,7 @@ public class MapperServiceImpl<T> implements MapperService<T> {
 
     @Override
     public MapperService<T> like(Property property, Object value) {
-        return null;
+        return like(LambdaUtils.fieldName(property), value);
     }
 
     @Override
@@ -431,7 +429,7 @@ public class MapperServiceImpl<T> implements MapperService<T> {
 
     @Override
     public MapperService<T> between(Property property, Object left, Object right) {
-        return null;
+        return between(LambdaUtils.fieldName(property), left, right);
     }
 
     @Override
@@ -442,7 +440,7 @@ public class MapperServiceImpl<T> implements MapperService<T> {
 
     @Override
     public MapperService<T> isNull(Property property) {
-        return null;
+        return isNull(LambdaUtils.fieldName(property));
     }
 
     /**
@@ -494,17 +492,25 @@ public class MapperServiceImpl<T> implements MapperService<T> {
         return conditionSql;
     }
 
+    /**
+     * 构建条件Map
+     */
     private void conditionMapBuilder(ConditionEnum conditionEnum, Map<String, Object> logicMap) {
         logicMap.forEach((k, v) -> {
+            // lambda属性映射表字段
             if (fieldColumnMap.containsKey(k)) {
                 k = fieldColumnMap.get(k);
             }
             sqlBuilder(sqlBuilder, conditionEnum, k, v);
+            conditionMap.put(conditionEnum.name() + "_" + k, v);
         });
-        MapUtils.aliasKey(logicMap, newKey(conditionEnum));
-        conditionMap.putAll(logicMap);
+//        MapUtils.aliasKey(logicMap, newKey(conditionEnum));
+//        conditionMap.putAll(logicMap);
     }
 
+    /**
+     * 实体条件
+     */
     private void entityCondition() {
         if (this.entity != null) {
             final KotTableInfo.TableInfo tableInfo = KotTableInfo.get(entity);
