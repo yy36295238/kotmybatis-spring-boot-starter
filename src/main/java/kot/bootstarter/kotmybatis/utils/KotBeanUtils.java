@@ -57,9 +57,6 @@ public class KotBeanUtils {
      */
     public static <T> Object fieldVal(String fieldName, T bean) {
         final Field field = ReflectionUtils.findField(bean.getClass(), fieldName);
-        if (field == null) {
-            return null;
-        }
         field.setAccessible(true);
         return ReflectionUtils.getField(field, bean);
     }

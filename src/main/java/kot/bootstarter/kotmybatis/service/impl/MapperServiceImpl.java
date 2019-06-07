@@ -1,5 +1,6 @@
 package kot.bootstarter.kotmybatis.service.impl;
 
+import kot.bootstarter.kotmybatis.annotation.Column;
 import kot.bootstarter.kotmybatis.common.CT;
 import kot.bootstarter.kotmybatis.common.Page;
 import kot.bootstarter.kotmybatis.config.KotTableInfo;
@@ -11,12 +12,16 @@ import kot.bootstarter.kotmybatis.service.MapperService;
 import kot.bootstarter.kotmybatis.utils.KotBeanUtils;
 import kot.bootstarter.kotmybatis.utils.KotStringUtils;
 import kot.bootstarter.kotmybatis.utils.LambdaUtils;
-import kot.bootstarter.kotmybatis.utils.MapUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.Assert;
+import org.springframework.util.CollectionUtils;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.util.*;
+
+import static java.util.stream.Collectors.toSet;
+import static kot.bootstarter.kotmybatis.service.impl.MapperServiceImpl.MethodEnum.*;
 
 /**
  * @author YangYu
@@ -33,6 +38,7 @@ public class MapperServiceImpl<T> implements MapperService<T> {
     private List<T> batchList;
     private boolean skipLogicDelMethod = false;
     private Map<String, String> fieldColumnMap;
+    private KotTableInfo.TableInfo tableInfo;
 
     private BaseMapper<T> baseMapper;
 
@@ -77,21 +83,21 @@ public class MapperServiceImpl<T> implements MapperService<T> {
 
     @Override
     public T findOne(T entity) {
-        this.methodEnum = MethodEnum.FIND_ONE;
+        this.methodEnum = FIND_ONE;
         this.entity = entity;
         return (T) execute();
     }
 
     @Override
     public List<T> list(T entity) {
-        this.methodEnum = MethodEnum.LIST;
+        this.methodEnum = LIST;
         this.entity = entity;
         return (List<T>) execute();
     }
 
     @Override
     public Integer count(T entity) {
-        this.methodEnum = MethodEnum.COUNT;
+        this.methodEnum = COUNT;
         this.entity = entity;
         return (Integer) execute();
     }
@@ -114,7 +120,7 @@ public class MapperServiceImpl<T> implements MapperService<T> {
         if (containsOrderBy) {
             conditionMap.put(CT.ORDER_BY, orderBy);
         }
-        this.methodEnum = MethodEnum.SELECT_PAGE;
+        this.methodEnum = SELECT_PAGE;
         final List<T> list = (List<T>) execute();
         page.setData(list);
         page.setTotal(count);
@@ -175,9 +181,18 @@ public class MapperServiceImpl<T> implements MapperService<T> {
     }
 
     private Object execute() {
+
+        if (this.entity != null) {
+            tableInfo = KotTableInfo.get(this.entity);
+        }
+
         // 开启逻辑删除
         if (!this.skipLogicDelMethod) {
             logicDel(false);
+        }
+        // 处理模糊查询
+        if (isLikeQuery()) {
+            likeQuery();
         }
 
         conditionSql = KotStringUtils.isBlank(conditionSql) ? conditionSql() : conditionSql;
@@ -187,15 +202,15 @@ public class MapperServiceImpl<T> implements MapperService<T> {
             case BATCH_INSERT:
                 return baseMapper.batchInsert(this.batchList);
             case FIND_ONE:
-                return baseMapper.findOne(columns, conditionSql, conditionMap, this.entity);
+                return baseMapper.findOne(columnsBuilder(), conditionSql, conditionMap, this.entity);
             case LIST:
-                return baseMapper.list(columns, conditionSql, conditionMap, this.entity);
+                return baseMapper.list(columnsBuilder(), conditionSql, conditionMap, this.entity);
             case SELECT_PAGE:
-                return baseMapper.selectPage(columns, conditionSql, this.page, conditionMap, this.entity);
+                return baseMapper.selectPage(columnsBuilder(), conditionSql, this.page, conditionMap, this.entity);
             case COUNT:
                 return baseMapper.count(conditionSql, conditionMap, this.entity);
             case UPDATE:
-                return baseMapper.update(columns, conditionSql, conditionMap, this.entity, this.setEntity, this.setNull);
+                return baseMapper.update(columnsBuilder(), conditionSql, conditionMap, this.entity, this.setEntity, this.setNull);
             case UPDATE_BY_ID:
                 return baseMapper.updateById(this.entity, this.setNull);
             case DELETE:
@@ -210,7 +225,7 @@ public class MapperServiceImpl<T> implements MapperService<T> {
         if (!properties.isLogicDelete()) {
             return null;
         }
-        final KotTableInfo.FieldWrapper logicDelFieldWrapper = KotTableInfo.get(entity).getLogicDelFieldWrapper();
+        final KotTableInfo.FieldWrapper logicDelFieldWrapper = this.tableInfo.getLogicDelFieldWrapper();
         if (logicDelFieldWrapper == null) {
             return null;
         }
@@ -275,6 +290,16 @@ public class MapperServiceImpl<T> implements MapperService<T> {
     public MapperService<T> orderBy(String orderBy) {
         conditionMap.put("orderBy", orderBy);
         return this;
+    }
+
+    @Override public MapperService<T> orderByIdAsc() {
+        // TODO 排序
+        return orderBy("id ASC");
+    }
+
+    @Override public MapperService<T> orderByIdDesc() {
+        // TODO 排序
+        return orderBy("id DESC");
     }
 
     @Override
@@ -451,7 +476,9 @@ public class MapperServiceImpl<T> implements MapperService<T> {
         // 实体条件
         this.entityCondition();
 
-        this.fieldColumnMap = KotTableInfo.get(this.entity).getFieldColumnMap();
+        if (this.entity != null) {
+            this.fieldColumnMap = KotTableInfo.get(this.entity).getFieldColumnMap();
+        }
 
         // 链式条件
         if (eqMap != null) {
@@ -502,10 +529,8 @@ public class MapperServiceImpl<T> implements MapperService<T> {
                 k = fieldColumnMap.get(k);
             }
             sqlBuilder(sqlBuilder, conditionEnum, k, v);
-            conditionMap.put(conditionEnum.name() + "_" + k, v);
+            conditionMap.put(newKey(conditionEnum, k), v);
         });
-//        MapUtils.aliasKey(logicMap, newKey(conditionEnum));
-//        conditionMap.putAll(logicMap);
     }
 
     /**
@@ -513,13 +538,12 @@ public class MapperServiceImpl<T> implements MapperService<T> {
      */
     private void entityCondition() {
         if (this.entity != null) {
-            final KotTableInfo.TableInfo tableInfo = KotTableInfo.get(entity);
             tableInfo.getFields().forEach(fieldWrapper -> {
                 final Field field = fieldWrapper.getField();
                 field.setAccessible(true);
                 try {
                     final Object val = field.get(entity);
-                    if (val != null) {
+                    if (KotStringUtils.isNotEmpty(val)) {
                         (eqMap = map(eqMap)).put(tableInfo.getFieldColumnMap().get(field.getName()), val);
                     }
                 } catch (IllegalAccessException e) {
@@ -527,6 +551,28 @@ public class MapperServiceImpl<T> implements MapperService<T> {
                 }
             });
         }
+    }
+
+    /**
+     * @Column(isLike=true) 模糊注解：模糊查询
+     */
+    private void likeQuery() {
+        final List<KotTableInfo.FieldWrapper> fields = this.tableInfo.getFields();
+        fields.forEach(fieldWrapper -> {
+            final List<Annotation> annotations = fieldWrapper.getAnnotations();
+            annotations.forEach(annotation -> {
+                if (annotation instanceof Column) {
+                    if (((Column) annotation).isLike()) {
+                        Object fieldVal = KotBeanUtils.fieldVal(fieldWrapper.getFieldName(), this.entity);
+                        if (KotStringUtils.isNotEmpty(fieldVal)) {
+                            this.like(fieldWrapper.getColumn(), fieldVal);
+                            KotBeanUtils.setField(fieldWrapper.getField(), this.entity, "");
+                        }
+
+                    }
+                }
+            });
+        });
     }
 
     /**
@@ -539,7 +585,7 @@ public class MapperServiceImpl<T> implements MapperService<T> {
             sqlBuilder.append(CT.AND);
         }
         sqlBuilder.append(k).append(conditionEnum.oper);
-        k = conditionEnum.name() + "_" + k;
+        k = newKey(conditionEnum, k);
         // in 查询拼接SQL语法
         if (conditionEnum == ConditionEnum.IN || conditionEnum == ConditionEnum.NIN) {
             Collection collection = (Collection) v;
@@ -564,8 +610,16 @@ public class MapperServiceImpl<T> implements MapperService<T> {
     /**
      * key 别名
      */
-    private String newKey(ConditionEnum conditionEnum) {
-        return conditionEnum.name() + "_%s";
+    private String newKey(ConditionEnum conditionEnum, String key) {
+        return conditionEnum.name() + "_" + key;
+    }
+
+    private Set<String> columnsBuilder() {
+        if (CollectionUtils.isEmpty(columns)) {
+            return null;
+        }
+        final Map<String, String> fieldColumnMap = KotTableInfo.get(this.entity).getFieldColumnMap();
+        return columns.stream().map(c -> fieldColumnMap.getOrDefault(c, c)).collect(toSet());
     }
 
     enum MethodEnum {
@@ -573,6 +627,13 @@ public class MapperServiceImpl<T> implements MapperService<T> {
          * 调用函数
          */
         INSERT, BATCH_INSERT, FIND_ONE, LIST, COUNT, SELECT_PAGE, UPDATE, UPDATE_BY_ID, DELETE
+    }
+
+    /**
+     * 字段进行模糊查询
+     */
+    private boolean isLikeQuery() {
+        return Arrays.asList(FIND_ONE, LIST, COUNT, SELECT_PAGE).contains(this.methodEnum);
     }
 
 }

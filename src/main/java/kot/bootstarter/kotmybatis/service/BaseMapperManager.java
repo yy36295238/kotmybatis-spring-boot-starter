@@ -23,6 +23,10 @@ public interface BaseMapperManager<T> {
 
     MapperService<T> orderBy(String orderBy);
 
+    MapperService<T> orderByIdAsc();
+
+    MapperService<T> orderByIdDesc();
+
     MapperService<T> eq(String key, Object value);
 
     MapperService<T> eq(Property property, Object value);

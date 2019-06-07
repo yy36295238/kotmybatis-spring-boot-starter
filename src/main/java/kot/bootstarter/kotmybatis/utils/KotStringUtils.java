@@ -108,5 +108,8 @@ public class KotStringUtils extends StringUtils {
         return sb.deleteCharAt(sb.lastIndexOf(CT.SPILT));
     }
 
+    public static boolean isNotEmpty(Object obj) {
+        return obj != null && isNotBlank(obj.toString());
+    }
 
 }
