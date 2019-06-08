@@ -1,6 +1,5 @@
 package kot.bootstarter.kotmybatis.service.impl;
 
-import kot.bootstarter.kotmybatis.annotation.Column;
 import kot.bootstarter.kotmybatis.common.CT;
 import kot.bootstarter.kotmybatis.common.Page;
 import kot.bootstarter.kotmybatis.config.KotTableInfo;
@@ -16,7 +15,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.util.*;
 
@@ -30,19 +28,37 @@ import static kot.bootstarter.kotmybatis.service.impl.MapperServiceImpl.MethodEn
 @Slf4j
 public class MapperServiceImpl<T> implements MapperService<T> {
 
+    private BaseMapper<T> baseMapper;
+
+    private KotMybatisProperties properties;
+
+
     private Page<T> page;
     private T entity;
     private T setEntity;
     private MethodEnum methodEnum;
+    /**
+     * 开启属性设置为null
+     */
     private boolean setNull;
     private List<T> batchList;
-    private boolean skipLogicDelMethod = false;
     private Map<String, String> fieldColumnMap;
     private KotTableInfo.TableInfo tableInfo;
+    /**
+     * 开启字段模糊查询
+     */
+    private boolean activeLike = false;
+    /**
+     * 按主键排序
+     */
+    private boolean orderByIdAsc = false;
+    private boolean orderByIdDesc = false;
 
-    private BaseMapper<T> baseMapper;
+    /**
+     * 开启实体条件
+     */
+    private boolean activeEntityCondition = true;
 
-    private KotMybatisProperties properties;
 
     MapperServiceImpl(BaseMapper<T> baseMapper, KotMybatisProperties properties) {
         this.baseMapper = baseMapper;
@@ -56,7 +72,6 @@ public class MapperServiceImpl<T> implements MapperService<T> {
      */
     @Override
     public int insert(T entity) {
-        this.skipLogicDelMethod = true;
         this.methodEnum = MethodEnum.INSERT;
         this.entity = entity;
         return (int) execute();
@@ -64,7 +79,6 @@ public class MapperServiceImpl<T> implements MapperService<T> {
 
     @Override
     public int batchInsert(List<T> batchList) {
-        this.skipLogicDelMethod = true;
         this.methodEnum = MethodEnum.BATCH_INSERT;
         this.batchList = batchList;
         return (int) execute();
@@ -72,13 +86,12 @@ public class MapperServiceImpl<T> implements MapperService<T> {
 
     @Override
     public int save(T entity) {
-        this.skipLogicDelMethod = true;
-        final String primaryKey = KotTableInfo.primaryKey(entity);
-        final Object id = KotBeanUtils.fieldVal(primaryKey, entity);
-        if (id == null) {
+        final KotTableInfo.FieldWrapper fieldWrapper = KotTableInfo.get(entity).getPrimaryKey();
+        final Object fieldVal = KotBeanUtils.getFieldVal(fieldWrapper.getField(), entity);
+        if (fieldVal == null) {
             return insert(entity);
         }
-        return updateById(entity, true);
+        return updateById(entity);
     }
 
     @Override
@@ -96,10 +109,10 @@ public class MapperServiceImpl<T> implements MapperService<T> {
     }
 
     @Override
-    public Integer count(T entity) {
+    public int count(T entity) {
         this.methodEnum = COUNT;
         this.entity = entity;
-        return (Integer) execute();
+        return (int) execute();
     }
 
     @Override
@@ -129,7 +142,6 @@ public class MapperServiceImpl<T> implements MapperService<T> {
 
     @Override
     public int delete(T entity) {
-        this.skipLogicDelMethod = true;
         this.methodEnum = MethodEnum.DELETE;
         this.entity = entity;
         return (int) execute();
@@ -138,6 +150,7 @@ public class MapperServiceImpl<T> implements MapperService<T> {
     @Override
     public int logicDelete(T entity) {
         this.entity = entity;
+        this.tableInfo = KotTableInfo.get(entity);
         if (!properties.isLogicDelete()) {
             throw new RuntimeException("未启用逻辑删除功能,如果想启用,添加配置:[kot.mybatis.logicDelete=true]");
         }
@@ -180,6 +193,28 @@ public class MapperServiceImpl<T> implements MapperService<T> {
         return (int) execute();
     }
 
+    @Override
+    public Map<String, Object> columnExist(T entity) {
+        Map<String, Object> existMap = new HashMap<>();
+        this.activeEntityCondition = false;
+        // 判断该字段值存在
+        final List<KotTableInfo.FieldWrapper> columnFields = KotTableInfo.get(entity).getColumnFields();
+        columnFields.forEach(fieldWrapper -> {
+            resetCondition();
+            if (fieldWrapper.getColumnAnno().unique()) {
+                final Object fieldVal = KotBeanUtils.getFieldVal(fieldWrapper.getField(), entity);
+                if (KotStringUtils.isNotEmpty(fieldVal)) {
+                    this.eq(fieldWrapper.getColumn(), fieldVal);
+                    final int count = this.count(entity);
+                    if (count > 0) {
+                        existMap.put(fieldWrapper.getFieldName(), fieldVal);
+                    }
+                }
+            }
+        });
+        return existMap;
+    }
+
     private Object execute() {
 
         if (this.entity != null) {
@@ -187,7 +222,7 @@ public class MapperServiceImpl<T> implements MapperService<T> {
         }
 
         // 开启逻辑删除
-        if (!this.skipLogicDelMethod) {
+        if (!isSkipLogicDelMethod()) {
             logicDel(false);
         }
         // 处理模糊查询
@@ -293,13 +328,13 @@ public class MapperServiceImpl<T> implements MapperService<T> {
     }
 
     @Override public MapperService<T> orderByIdAsc() {
-        // TODO 排序
-        return orderBy("id ASC");
+        this.orderByIdAsc = true;
+        return this;
     }
 
     @Override public MapperService<T> orderByIdDesc() {
-        // TODO 排序
-        return orderBy("id DESC");
+        this.orderByIdDesc = true;
+        return this;
     }
 
     @Override
@@ -468,16 +503,21 @@ public class MapperServiceImpl<T> implements MapperService<T> {
         return isNull(LambdaUtils.fieldName(property));
     }
 
+    @Override public MapperService<T> activeLike() {
+        this.activeLike = true;
+        return this;
+    }
+
     /**
      * 实际查询条件
      */
     private String conditionSql() {
 
-        // 实体条件
-        this.entityCondition();
-
         if (this.entity != null) {
+            // 表信息
             this.fieldColumnMap = KotTableInfo.get(this.entity).getFieldColumnMap();
+            // 实体条件
+            this.entityCondition();
         }
 
         // 链式条件
@@ -515,6 +555,10 @@ public class MapperServiceImpl<T> implements MapperService<T> {
         if (orMap != null) {
             conditionMapBuilder(ConditionEnum.OR, orMap);
         }
+
+        // orderBy条件
+        orderByBuilder();
+
         conditionSql = KotStringUtils.removeFirstAndOr(sqlBuilder.toString());
         return conditionSql;
     }
@@ -537,41 +581,36 @@ public class MapperServiceImpl<T> implements MapperService<T> {
      * 实体条件
      */
     private void entityCondition() {
-        if (this.entity != null) {
-            tableInfo.getFields().forEach(fieldWrapper -> {
-                final Field field = fieldWrapper.getField();
-                field.setAccessible(true);
-                try {
-                    final Object val = field.get(entity);
-                    if (KotStringUtils.isNotEmpty(val)) {
-                        (eqMap = map(eqMap)).put(tableInfo.getFieldColumnMap().get(field.getName()), val);
-                    }
-                } catch (IllegalAccessException e) {
-                    throw new RuntimeException(e);
-                }
-            });
+        if (!this.activeEntityCondition) {
+            return;
         }
+        tableInfo.getColumnFields().forEach(fieldWrapper -> {
+            final Field field = fieldWrapper.getField();
+            field.setAccessible(true);
+            try {
+                final Object val = field.get(entity);
+                // 值不为空，并且不是模糊查询字段，才进行条件拼接
+                if (KotStringUtils.isNotEmpty(val) && (!fieldWrapper.getColumnAnno().isLike() || !activeLike)) {
+                    (eqMap = map(eqMap)).put(tableInfo.getFieldColumnMap().get(field.getName()), val);
+                }
+            } catch (IllegalAccessException e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
     /**
      * @Column(isLike=true) 模糊注解：模糊查询
      */
     private void likeQuery() {
-        final List<KotTableInfo.FieldWrapper> fields = this.tableInfo.getFields();
+        final List<KotTableInfo.FieldWrapper> fields = this.tableInfo.getColumnFields();
         fields.forEach(fieldWrapper -> {
-            final List<Annotation> annotations = fieldWrapper.getAnnotations();
-            annotations.forEach(annotation -> {
-                if (annotation instanceof Column) {
-                    if (((Column) annotation).isLike()) {
-                        Object fieldVal = KotBeanUtils.fieldVal(fieldWrapper.getFieldName(), this.entity);
-                        if (KotStringUtils.isNotEmpty(fieldVal)) {
-                            this.like(fieldWrapper.getColumn(), fieldVal);
-                            KotBeanUtils.setField(fieldWrapper.getField(), this.entity, "");
-                        }
-
-                    }
+            if (fieldWrapper.getColumnAnno().isLike() && activeLike) {
+                final Object fieldVal = KotBeanUtils.getFieldVal(fieldWrapper.getField(), this.entity);
+                if (KotStringUtils.isNotEmpty(fieldVal)) {
+                    this.like(fieldWrapper.getColumn(), fieldVal);
                 }
-            });
+            }
         });
     }
 
@@ -607,6 +646,15 @@ public class MapperServiceImpl<T> implements MapperService<T> {
         }
     }
 
+    private void orderByBuilder() {
+        if (this.orderByIdAsc) {
+            conditionMap.put("orderBy", tableInfo.getPrimaryKey().getColumn() + " ASC ");
+        }
+        if (this.orderByIdDesc) {
+            conditionMap.put("orderBy", tableInfo.getPrimaryKey().getColumn() + " DESC ");
+        }
+    }
+
     /**
      * key 别名
      */
@@ -630,10 +678,26 @@ public class MapperServiceImpl<T> implements MapperService<T> {
     }
 
     /**
+     * 跳过逻辑删除方法
+     */
+    private boolean isSkipLogicDelMethod() {
+        return Arrays.asList(INSERT, BATCH_INSERT, DELETE).contains(this.methodEnum);
+    }
+
+    /**
      * 字段进行模糊查询
      */
     private boolean isLikeQuery() {
-        return Arrays.asList(FIND_ONE, LIST, COUNT, SELECT_PAGE).contains(this.methodEnum);
+        return Arrays.asList(FIND_ONE, LIST, COUNT, SELECT_PAGE, UPDATE).contains(this.methodEnum);
+    }
+
+    /**
+     * 重置查询条件
+     */
+    private void resetCondition() {
+        this.eqMap = null;
+        this.conditionSql = "";
+        this.sqlBuilder = new StringBuilder();
     }
 
 }

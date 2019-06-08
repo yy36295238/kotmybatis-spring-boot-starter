@@ -93,7 +93,8 @@ public class BaseProvider<T> implements ProviderMethodResolver {
     public String updateById(Map<String, Object> map) {
         final T entity = (T) map.get(CT.ALIAS_ENTITY);
         final boolean setNull = (boolean) map.get("setNull");
-        return new SQL().UPDATE(tableName(entity)).SET(updateSqlBuilder(entity, CT.ALIAS_ENTITY, setNull)).WHERE("id=#{" + CT.ALIAS_ENTITY + CT.DOT + KotTableInfo.get(entity).getPrimaryKey() + "}").toString();
+        final String primaryKey = KotTableInfo.get(entity).getPrimaryKey().getColumn();
+        return new SQL().UPDATE(tableName(entity)).SET(updateSqlBuilder(entity, CT.ALIAS_ENTITY, setNull)).WHERE(primaryKey + "=#{" + CT.ALIAS_ENTITY + CT.DOT + primaryKey + "}").toString();
     }
 
     public String update(Map<String, Object> map) {
@@ -161,7 +162,7 @@ public class BaseProvider<T> implements ProviderMethodResolver {
                 Field field = fieldWrapper.getField();
                 field.setAccessible(true);
                 Object val = field.get(entity);
-                if ((setNull || val != null) && !field.getName().equals(tableInfo.getPrimaryKey())) {
+                if ((setNull || val != null) && !field.getName().equals(tableInfo.getPrimaryKey().getColumn())) {
                     columnsBuilder.append("`").append(fieldWrapper.getColumn()).append("`").append("=");
                     String aliasField = StringUtils.isBlank(alias) ? field.getName() : alias + CT.DOT + field.getName();
                     columnsBuilder.append("#{").append(aliasField).append("}").append(CT.SPILT);

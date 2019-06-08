@@ -86,4 +86,6 @@ public interface BaseMapperManager<T> {
     MapperService<T> isNull(String key);
 
     MapperService<T> isNull(Property property);
+
+    MapperService<T> activeLike();
 }

@@ -17,4 +17,6 @@ public @interface Column {
     String value();
 
     boolean isLike() default false;
+
+    boolean unique() default false;
 }

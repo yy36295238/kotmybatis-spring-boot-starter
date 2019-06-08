@@ -65,6 +65,7 @@ public class KotBeanUtils {
      * 根据属性获取值
      */
     public static Object getFieldVal(Field field, Object bean) {
+        field.setAccessible(true);
         return ReflectionUtils.getField(field, bean);
     }
 
