@@ -16,7 +16,18 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 public @interface Column {
     String value();
 
+    /**
+     * 模糊查询
+     */
     boolean isLike() default false;
 
+    /**
+     * 唯一字段
+     */
     boolean unique() default false;
+
+    /**
+     * 乐观锁
+     */
+    boolean version() default false;
 }

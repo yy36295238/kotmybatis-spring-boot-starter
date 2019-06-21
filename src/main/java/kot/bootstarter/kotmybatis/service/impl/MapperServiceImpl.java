@@ -4,6 +4,7 @@ import kot.bootstarter.kotmybatis.common.CT;
 import kot.bootstarter.kotmybatis.common.Page;
 import kot.bootstarter.kotmybatis.config.KotTableInfo;
 import kot.bootstarter.kotmybatis.enums.ConditionEnum;
+import kot.bootstarter.kotmybatis.exception.KotException;
 import kot.bootstarter.kotmybatis.lambda.Property;
 import kot.bootstarter.kotmybatis.mapper.BaseMapper;
 import kot.bootstarter.kotmybatis.properties.KotMybatisProperties;
@@ -173,10 +174,25 @@ public class MapperServiceImpl<T> implements MapperService<T> {
 
     @Override
     public int updateById(T entity, boolean setNull) {
-        this.methodEnum = MethodEnum.UPDATE_BY_ID;
-        this.entity = entity;
-        this.setNull = setNull;
-        return (int) execute();
+        T whereEntity;
+        try {
+            whereEntity = (T) entity.getClass().newInstance();
+            final Field primaryField = KotTableInfo.get(entity).getPrimaryKey().getField();
+            final Object primaryVal = KotBeanUtils.getFieldVal(primaryField, entity);
+            Assert.notNull(primaryVal, "method [updateById] id is null");
+            // 乐观锁更新
+            final KotTableInfo.FieldWrapper fieldWrapper = versionLockFiled(entity);
+            if (fieldWrapper != null) {
+                final Object versionVal = KotBeanUtils.getFieldVal(fieldWrapper.getField(), entity);
+                if (versionVal != null) {
+                    KotBeanUtils.setField(fieldWrapper.getField(), whereEntity, versionVal);
+                }
+            }
+            KotBeanUtils.setField(primaryField, whereEntity, primaryVal);
+        } catch (InstantiationException | IllegalAccessException e) {
+            throw new KotException(e);
+        }
+        return update(entity, whereEntity, setNull);
     }
 
     @Override
@@ -246,8 +262,6 @@ public class MapperServiceImpl<T> implements MapperService<T> {
                 return baseMapper.count(conditionSql, conditionMap, this.entity);
             case UPDATE:
                 return baseMapper.update(columnsBuilder(), conditionSql, conditionMap, this.entity, this.setEntity, this.setNull);
-            case UPDATE_BY_ID:
-                return baseMapper.updateById(this.entity, this.setNull);
             case DELETE:
                 return baseMapper.delete(conditionSql, conditionMap, entity);
             default:
@@ -327,12 +341,14 @@ public class MapperServiceImpl<T> implements MapperService<T> {
         return this;
     }
 
-    @Override public MapperService<T> orderByIdAsc() {
+    @Override
+    public MapperService<T> orderByIdAsc() {
         this.orderByIdAsc = true;
         return this;
     }
 
-    @Override public MapperService<T> orderByIdDesc() {
+    @Override
+    public MapperService<T> orderByIdDesc() {
         this.orderByIdDesc = true;
         return this;
     }
@@ -503,7 +519,8 @@ public class MapperServiceImpl<T> implements MapperService<T> {
         return isNull(LambdaUtils.fieldName(property));
     }
 
-    @Override public MapperService<T> activeLike() {
+    @Override
+    public MapperService<T> activeLike() {
         this.activeLike = true;
         return this;
     }
@@ -592,7 +609,13 @@ public class MapperServiceImpl<T> implements MapperService<T> {
                 // 值不为空，并且不是模糊查询字段，才进行条件拼接
                 if (KotStringUtils.isNotEmpty(val) && (!fieldWrapper.getColumnAnno().isLike() || !activeLike)) {
                     (eqMap = map(eqMap)).put(tableInfo.getFieldColumnMap().get(field.getName()), val);
+                    // 乐观锁设置
+                    if (isVersionLock(fieldWrapper)) {
+                        KotBeanUtils.setField(fieldWrapper.getField(), setEntity, KotBeanUtils.cast(fieldWrapper.getField().getGenericType(), String.valueOf(Long.valueOf(val.toString()) + 1)));
+                    }
                 }
+
+
             } catch (IllegalAccessException e) {
                 throw new RuntimeException(e);
             }
@@ -613,6 +636,21 @@ public class MapperServiceImpl<T> implements MapperService<T> {
             }
         });
     }
+
+    private boolean isVersionLock(KotTableInfo.FieldWrapper fieldWrapper) {
+        return this.methodEnum == UPDATE && fieldWrapper.getColumnAnno().version();
+    }
+
+    private KotTableInfo.FieldWrapper versionLockFiled(T entity) {
+        final List<KotTableInfo.FieldWrapper> columnFields = KotTableInfo.get(entity).getColumnFields();
+        for (KotTableInfo.FieldWrapper fieldWrapper : columnFields) {
+            if (fieldWrapper.getColumnAnno().version()) {
+                return fieldWrapper;
+            }
+        }
+        return null;
+    }
+
 
     /**
      * 构建SQL语句
@@ -674,7 +712,7 @@ public class MapperServiceImpl<T> implements MapperService<T> {
         /**
          * 调用函数
          */
-        INSERT, BATCH_INSERT, FIND_ONE, LIST, COUNT, SELECT_PAGE, UPDATE, UPDATE_BY_ID, DELETE
+        INSERT, BATCH_INSERT, FIND_ONE, LIST, COUNT, SELECT_PAGE, UPDATE, DELETE
     }
 
     /**

@@ -90,19 +90,11 @@ public class BaseProvider<T> implements ProviderMethodResolver {
         return new SQL().DELETE_FROM(tableName(entity)).WHERE(conditionSql).toString();
     }
 
-    public String updateById(Map<String, Object> map) {
-        final T entity = (T) map.get(CT.ALIAS_ENTITY);
-        final boolean setNull = (boolean) map.get("setNull");
-        final String primaryKey = KotTableInfo.get(entity).getPrimaryKey().getColumn();
-        return new SQL().UPDATE(tableName(entity)).SET(updateSqlBuilder(entity, CT.ALIAS_ENTITY, setNull)).WHERE(primaryKey + "=#{" + CT.ALIAS_ENTITY + CT.DOT + primaryKey + "}").toString();
-    }
-
     public String update(Map<String, Object> map) {
-        final T whereEntity = (T) map.get(CT.ALIAS_ENTITY);
         final T setEntity = (T) map.get(CT.SET_ENTITY);
         final boolean setNull = (boolean) map.get("setNull");
         final String conditionSql = (String) map.get(CT.SQL_CONDITION);
-        return new SQL().UPDATE(tableName(whereEntity)).SET(updateSqlBuilder(setEntity, CT.SET_ENTITY, setNull)).WHERE(conditionSql).toString();
+        return new SQL().UPDATE(tableName(setEntity)).SET(updateSqlBuilder(setEntity, CT.SET_ENTITY, setNull)).WHERE(conditionSql).toString();
     }
 
     /*
