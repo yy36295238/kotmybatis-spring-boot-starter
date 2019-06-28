@@ -31,7 +31,15 @@ public interface BaseMapper<T> {
      */
 
     @Select("SELECT ${columns} FROM ${relatedTableName} WHERE ${pkColumn} = #{pkVal}")
-    Map<String, Object> relatedFind(@Param("relatedTableName") String assTableName, @Param("columns") String columns, @Param("pkColumn") String pkColumn, @Param("pkVal") Object pkVal);
+    Map<String, Object> relatedFindOne(@Param("relatedTableName") String assTableName, @Param("columns") String columns, @Param("pkColumn") String pkColumn, @Param("pkVal") Object pkVal);
+
+    @Select("<script>"
+            + "SELECT ${columns} FROM ${relatedTableName} WHERE OrderNo IN "
+            + "<foreach item='item' index='index' collection='pkVals' open='(' separator=',' close=')'>"
+            + "#{item}"
+            + "</foreach>"
+            + "</script>")
+    List<Map<String, Object>> relatedFindAll(@Param("relatedTableName") String assTableName, @Param("columns") String columns, @Param("pkColumn") String pkColumn, @Param("pkVals") List pkVals);
 
 
     @SelectProvider(type = BaseProvider.class)

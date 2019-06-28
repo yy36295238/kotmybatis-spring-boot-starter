@@ -23,6 +23,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 import static kot.bootstarter.kotmybatis.service.impl.MapperServiceImpl.MethodEnum.*;
 
@@ -124,7 +125,7 @@ public class MapperServiceImpl<T> implements MapperService<T> {
                         final KotTableInfo.TableInfo relatedTableInfo = KotTableInfo.get(clazz.newInstance());
                         final Map<String, String> relatedFieldColumnMap = relatedTableInfo.getFieldColumnMap();
                         final String relatedTableName = relatedTableInfo.getTableName();
-                        final Map<String, Object> relatedMap = baseMapper.relatedFind(relatedTableName, columns, pkColumn, KotBeanUtils.getFieldVal(fieldWrapper.getField(), resultEntity));
+                        final Map<String, Object> relatedMap = baseMapper.relatedFindOne(relatedTableName, columns, pkColumn, KotBeanUtils.getFieldVal(fieldWrapper.getField(), resultEntity));
                         if (relatedMap == null) {
                             continue;
                         }
@@ -152,7 +153,63 @@ public class MapperServiceImpl<T> implements MapperService<T> {
     public List<T> list(T entity) {
         this.methodEnum = LIST;
         this.entity = entity;
-        return (List<T>) execute();
+        List<T> list = (List<T>) execute();
+        if (list.size() <= 0) {
+            return list;
+        }
+        List<Object> relatedVals = null;
+        final KotTableInfo.TableInfo tableInfo = KotTableInfo.get(entity);
+        final List<KotTableInfo.FieldWrapper> columnFields = tableInfo.getColumnFields();
+        final Map<String, KotTableInfo.FieldWrapper> fieldWrapperMap = tableInfo.getFieldWrapperMap();
+        for (KotTableInfo.FieldWrapper fieldWrapper : columnFields) {
+            for (Annotation annotation : fieldWrapper.getAnnotations()) {
+                if (annotation instanceof Related) {
+                    Related related = ((Related) annotation);
+                    final Class<?> clazz = related.clazz();
+                    final String pkColumn = KotStringUtils.isBlank(related.pkColumn()) ? tableInfo.getPrimaryKey().getColumn() : related.pkColumn();
+
+                    // 获取查询数据中关联pk集合
+                    relatedVals = relatedVals == null ? list.stream().map(o -> KotBeanUtils.getFieldVal(fieldWrapper.getField(), o)).collect(toList()) : list.stream().map(o -> KotBeanUtils.getFieldVal(fieldWrapper.getField(), o)).collect(toList());
+                    String columns = Stream.of(related.columns()).map(c -> (c.contains(".") ? c.split("\\.")[0] : c) + "," + pkColumn).collect(Collectors.joining(","));
+
+                    try {
+                        final KotTableInfo.TableInfo relatedTableInfo = KotTableInfo.get(clazz.newInstance());
+                        final Map<String, String> relatedFieldColumnMap = relatedTableInfo.getFieldColumnMap();
+                        final String relatedTableName = relatedTableInfo.getTableName();
+                        final List<Map<String, Object>> relatedMaps = baseMapper.relatedFindAll(relatedTableName, columns, pkColumn, relatedVals);
+                        if (relatedMaps.size() <= 0) {
+                            continue;
+                        }
+                        relatedMaps.forEach(relatedMap -> {
+                            relatedMap.forEach((k, v) -> {
+                                final Object relatedVal = relatedMap.getOrDefault(fieldWrapper.getFieldName(), fieldWrapper.getFieldName());
+                                k = relatedFieldColumnMap.getOrDefault(k, k);
+                                String finalK = k;
+                                list.forEach(oriEntity -> {
+                                    final Object oriRelatedVal = KotBeanUtils.getFieldVal(fieldWrapper.getField(), oriEntity);
+                                    if (oriRelatedVal.equals(relatedVal)) {
+                                        for (String column : related.columns()) {
+                                            String relatedColumn = column.contains(".") ? column.split("\\.")[0] : column;
+                                            String mappingColumn = column.contains(".") ? column.split("\\.")[1] : column;
+                                            if (finalK.equals(relatedColumn)) {
+                                                final KotTableInfo.FieldWrapper newFieldWrapper = fieldWrapperMap.get(mappingColumn);
+                                                KotBeanUtils.setField(newFieldWrapper.getField(), oriEntity, v);
+                                            }
+                                        }
+                                    }
+
+                                });
+
+                            });
+                        });
+
+                    } catch (InstantiationException | IllegalAccessException e) {
+                        throw new KotException(e);
+                    }
+                }
+            }
+        }
+        return list;
     }
 
     @Override
