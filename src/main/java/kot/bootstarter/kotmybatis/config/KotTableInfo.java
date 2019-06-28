@@ -54,6 +54,7 @@ public class KotTableInfo {
          */
         private Map<String, String> fieldColumnMap;
         private Map<String, String> columnFieldMap;
+        private Map<String, FieldWrapper> fieldWrapperMap;
     }
 
     /**
@@ -99,6 +100,7 @@ public class KotTableInfo {
         List<FieldWrapper> columnFields = new ArrayList<>();
         Map<String, String> fieldColumnMap = new HashMap<>();
         Map<String, String> columnFieldMap = new HashMap<>();
+        Map<String, FieldWrapper> fieldWrapperMap = new HashMap<>();
         StringBuilder columnBuilder = new StringBuilder();
         final Field[] declaredFields = entityClass.getDeclaredFields();
         for (Field field : declaredFields) {
@@ -118,9 +120,10 @@ public class KotTableInfo {
                 // 属性和列映射
                 fieldColumnMap.put(field.getName(), column);
                 columnFieldMap.put(column, field.getName());
-                columnFields.add(fieldWrapperBuilder.column(column).columnAnno(columnAnno).build());
-
+                final FieldWrapper fieldWrapper = fieldWrapperBuilder.column(column).columnAnno(columnAnno).build();
+                columnFields.add(fieldWrapper);
             }
+            fieldWrapperMap.put(field.getName(), fieldWrapperBuilder.build());
 
             // 获取主键
             final ID id = field.getAnnotation(ID.class);
@@ -141,8 +144,10 @@ public class KotTableInfo {
 
         return builder.tableName(tableNameAnnotation.value()).columns(columnBuilder.toString())
                 .fieldColumnMap(fieldColumnMap).columnFieldMap(columnFieldMap).columnFields(columnFields)
+                .fieldWrapperMap(fieldWrapperMap)
                 .build();
 
     }
+
 
 }

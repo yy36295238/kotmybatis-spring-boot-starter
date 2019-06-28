@@ -1,5 +1,6 @@
 package kot.bootstarter.kotmybatis.service.impl;
 
+import kot.bootstarter.kotmybatis.annotation.Related;
 import kot.bootstarter.kotmybatis.common.CT;
 import kot.bootstarter.kotmybatis.common.Page;
 import kot.bootstarter.kotmybatis.config.KotTableInfo;
@@ -16,8 +17,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toSet;
 import static kot.bootstarter.kotmybatis.service.impl.MapperServiceImpl.MethodEnum.*;
@@ -99,7 +103,49 @@ public class MapperServiceImpl<T> implements MapperService<T> {
     public T findOne(T entity) {
         this.methodEnum = FIND_ONE;
         this.entity = entity;
-        return (T) execute();
+        // 关联字段查询
+        T resultEntity = (T) execute();
+        if (resultEntity == null) {
+            return null;
+        }
+        final KotTableInfo.TableInfo tableInfo = KotTableInfo.get(entity);
+        final List<KotTableInfo.FieldWrapper> columnFields = tableInfo.getColumnFields();
+        final Map<String, KotTableInfo.FieldWrapper> fieldWrapperMap = tableInfo.getFieldWrapperMap();
+        for (KotTableInfo.FieldWrapper fieldWrapper : columnFields) {
+            for (Annotation annotation : fieldWrapper.getAnnotations()) {
+                if (annotation instanceof Related) {
+                    Related related = ((Related) annotation);
+                    final Class<?> clazz = related.clazz();
+
+                    String columns = Stream.of(related.columns()).map(c -> c.contains(".") ? c.split("\\.")[0] : c).collect(Collectors.joining(","));
+                    final String pkColumn = KotStringUtils.isBlank(related.pkColumn()) ? tableInfo.getPrimaryKey().getColumn() : related.pkColumn();
+
+                    try {
+                        final KotTableInfo.TableInfo relatedTableInfo = KotTableInfo.get(clazz.newInstance());
+                        final Map<String, String> relatedFieldColumnMap = relatedTableInfo.getFieldColumnMap();
+                        final String relatedTableName = relatedTableInfo.getTableName();
+                        final Map<String, Object> relatedMap = baseMapper.relatedFind(relatedTableName, columns, pkColumn, KotBeanUtils.getFieldVal(fieldWrapper.getField(), resultEntity));
+                        if (relatedMap == null) {
+                            continue;
+                        }
+                        relatedMap.forEach((k, v) -> {
+                            k = relatedFieldColumnMap.getOrDefault(k, k);
+                            for (String column : related.columns()) {
+                                String relatedColumn = column.contains(".") ? column.split("\\.")[0] : column;
+                                String mappingColumn = column.contains(".") ? column.split("\\.")[1] : column;
+                                if (k.equals(relatedColumn)) {
+                                    final KotTableInfo.FieldWrapper newFieldWrapper = fieldWrapperMap.get(mappingColumn);
+                                    KotBeanUtils.setField(newFieldWrapper.getField(), resultEntity, v);
+                                }
+                            }
+                        });
+                    } catch (InstantiationException | IllegalAccessException e) {
+                        throw new KotException(e);
+                    }
+                }
+            }
+        }
+        return resultEntity;
     }
 
     @Override

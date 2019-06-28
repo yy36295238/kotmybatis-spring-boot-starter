@@ -29,6 +29,11 @@ public interface BaseMapper<T> {
     /**
      * 查询操作
      */
+
+    @Select("SELECT ${columns} FROM ${relatedTableName} WHERE ${pkColumn} = #{pkVal}")
+    Map<String, Object> relatedFind(@Param("relatedTableName") String assTableName, @Param("columns") String columns, @Param("pkColumn") String pkColumn, @Param("pkVal") Object pkVal);
+
+
     @SelectProvider(type = BaseProvider.class)
     T findOne(@Param(CT.COLUMNS) Set<String> columns, @Param(CT.SQL_CONDITION) String conditionList, @Param(CT.ALIAS_CONDITION) Map<String, Object> conditionMap, @Param(CT.ALIAS_ENTITY) T entity);
 
