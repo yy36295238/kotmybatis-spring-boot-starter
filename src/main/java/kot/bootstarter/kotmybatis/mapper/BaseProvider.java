@@ -63,10 +63,6 @@ public class BaseProvider<T> implements ProviderMethodResolver {
         return sql.toString() + CT.VALUES + valuesBuilder.toString();
     }
 
-    public String findOne(Map<String, Object> map) {
-        return list(map) + CT.LIMIT_ONE;
-    }
-
     public String list(Map<String, Object> map) {
         final T entity = (T) map.get(CT.ALIAS_ENTITY);
         return selectGeneralSql(map, new SQL(), KotTableInfo.get(entity).getColumns()).toString();

@@ -1,6 +1,11 @@
 package kot.bootstarter.kotmybatis.exception;
 
 public class KotException extends RuntimeException {
+
+    public KotException(String message) {
+        super(message);
+    }
+
     public KotException(String message, Throwable cause) {
         super(message, cause);
     }

@@ -1,7 +1,7 @@
 package kot.bootstarter.kotmybatis.service.impl;
 
-import kot.bootstarter.kotmybatis.annotation.Related;
 import kot.bootstarter.kotmybatis.common.CT;
+import kot.bootstarter.kotmybatis.common.KotHelper;
 import kot.bootstarter.kotmybatis.common.Page;
 import kot.bootstarter.kotmybatis.config.KotTableInfo;
 import kot.bootstarter.kotmybatis.enums.ConditionEnum;
@@ -17,13 +17,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
-import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 import static kot.bootstarter.kotmybatis.service.impl.MapperServiceImpl.MethodEnum.*;
 
@@ -54,6 +50,10 @@ public class MapperServiceImpl<T> implements MapperService<T> {
      * 开启字段模糊查询
      */
     private boolean activeLike = false;
+    /**
+     * 开启关联字段查询
+     */
+    private boolean activeRelated = false;
     /**
      * 按主键排序
      */
@@ -102,51 +102,9 @@ public class MapperServiceImpl<T> implements MapperService<T> {
 
     @Override
     public T findOne(T entity) {
-        this.methodEnum = FIND_ONE;
         this.entity = entity;
-        // 关联字段查询
-        T resultEntity = (T) execute();
-        if (resultEntity == null) {
-            return null;
-        }
-        final KotTableInfo.TableInfo tableInfo = KotTableInfo.get(entity);
-        final List<KotTableInfo.FieldWrapper> columnFields = tableInfo.getColumnFields();
-        final Map<String, KotTableInfo.FieldWrapper> fieldWrapperMap = tableInfo.getFieldWrapperMap();
-        for (KotTableInfo.FieldWrapper fieldWrapper : columnFields) {
-            for (Annotation annotation : fieldWrapper.getAnnotations()) {
-                if (annotation instanceof Related) {
-                    Related related = ((Related) annotation);
-                    final Class<?> clazz = related.clazz();
-
-                    String columns = Stream.of(related.columns()).map(c -> c.contains(".") ? c.split("\\.")[0] : c).collect(Collectors.joining(","));
-                    final String pkColumn = KotStringUtils.isBlank(related.pkColumn()) ? tableInfo.getPrimaryKey().getColumn() : related.pkColumn();
-
-                    try {
-                        final KotTableInfo.TableInfo relatedTableInfo = KotTableInfo.get(clazz.newInstance());
-                        final Map<String, String> relatedFieldColumnMap = relatedTableInfo.getFieldColumnMap();
-                        final String relatedTableName = relatedTableInfo.getTableName();
-                        final Map<String, Object> relatedMap = baseMapper.relatedFindOne(relatedTableName, columns, pkColumn, KotBeanUtils.getFieldVal(fieldWrapper.getField(), resultEntity));
-                        if (relatedMap == null) {
-                            continue;
-                        }
-                        relatedMap.forEach((k, v) -> {
-                            k = relatedFieldColumnMap.getOrDefault(k, k);
-                            for (String column : related.columns()) {
-                                String relatedColumn = column.contains(".") ? column.split("\\.")[0] : column;
-                                String mappingColumn = column.contains(".") ? column.split("\\.")[1] : column;
-                                if (k.equals(relatedColumn)) {
-                                    final KotTableInfo.FieldWrapper newFieldWrapper = fieldWrapperMap.get(mappingColumn);
-                                    KotBeanUtils.setField(newFieldWrapper.getField(), resultEntity, v);
-                                }
-                            }
-                        });
-                    } catch (InstantiationException | IllegalAccessException e) {
-                        throw new KotException(e);
-                    }
-                }
-            }
-        }
-        return resultEntity;
+        final List<T> list = this.list(entity);
+        return list.size() <= 0 ? null : list.get(0);
     }
 
     @Override
@@ -157,57 +115,9 @@ public class MapperServiceImpl<T> implements MapperService<T> {
         if (list.size() <= 0) {
             return list;
         }
-        List<Object> relatedVals = null;
-        final KotTableInfo.TableInfo tableInfo = KotTableInfo.get(entity);
-        final List<KotTableInfo.FieldWrapper> columnFields = tableInfo.getColumnFields();
-        final Map<String, KotTableInfo.FieldWrapper> fieldWrapperMap = tableInfo.getFieldWrapperMap();
-        for (KotTableInfo.FieldWrapper fieldWrapper : columnFields) {
-            for (Annotation annotation : fieldWrapper.getAnnotations()) {
-                if (annotation instanceof Related) {
-                    Related related = ((Related) annotation);
-                    final Class<?> clazz = related.clazz();
-                    final String pkColumn = KotStringUtils.isBlank(related.pkColumn()) ? tableInfo.getPrimaryKey().getColumn() : related.pkColumn();
-
-                    // 获取查询数据中关联pk集合
-                    relatedVals = relatedVals == null ? list.stream().map(o -> KotBeanUtils.getFieldVal(fieldWrapper.getField(), o)).collect(toList()) : list.stream().map(o -> KotBeanUtils.getFieldVal(fieldWrapper.getField(), o)).collect(toList());
-                    String columns = Stream.of(related.columns()).map(c -> (c.contains(".") ? c.split("\\.")[0] : c) + "," + pkColumn).collect(Collectors.joining(","));
-
-                    try {
-                        final KotTableInfo.TableInfo relatedTableInfo = KotTableInfo.get(clazz.newInstance());
-                        final Map<String, String> relatedFieldColumnMap = relatedTableInfo.getFieldColumnMap();
-                        final String relatedTableName = relatedTableInfo.getTableName();
-                        final List<Map<String, Object>> relatedMaps = baseMapper.relatedFindAll(relatedTableName, columns, pkColumn, relatedVals);
-                        if (relatedMaps.size() <= 0) {
-                            continue;
-                        }
-                        relatedMaps.forEach(relatedMap -> {
-                            relatedMap.forEach((k, v) -> {
-                                final Object relatedVal = relatedMap.getOrDefault(fieldWrapper.getFieldName(), fieldWrapper.getFieldName());
-                                k = relatedFieldColumnMap.getOrDefault(k, k);
-                                String finalK = k;
-                                list.forEach(oriEntity -> {
-                                    final Object oriRelatedVal = KotBeanUtils.getFieldVal(fieldWrapper.getField(), oriEntity);
-                                    if (oriRelatedVal.equals(relatedVal)) {
-                                        for (String column : related.columns()) {
-                                            String relatedColumn = column.contains(".") ? column.split("\\.")[0] : column;
-                                            String mappingColumn = column.contains(".") ? column.split("\\.")[1] : column;
-                                            if (finalK.equals(relatedColumn)) {
-                                                final KotTableInfo.FieldWrapper newFieldWrapper = fieldWrapperMap.get(mappingColumn);
-                                                KotBeanUtils.setField(newFieldWrapper.getField(), oriEntity, v);
-                                            }
-                                        }
-                                    }
-
-                                });
-
-                            });
-                        });
-
-                    } catch (InstantiationException | IllegalAccessException e) {
-                        throw new KotException(e);
-                    }
-                }
-            }
+        // 关联字段查询
+        if (this.activeRelated) {
+            new KotHelper().relatedHelp(entity, list, baseMapper);
         }
         return list;
     }
@@ -265,7 +175,7 @@ public class MapperServiceImpl<T> implements MapperService<T> {
             KotBeanUtils.setField(fieldWrapper.getField(), setEntity, KotBeanUtils.cast(fieldWrapper.getField().getGenericType(), fieldWrapper.getDeleteAnnoVal()));
             return update(setEntity, entity);
         } catch (Exception e) {
-            throw new RuntimeException("", e);
+            throw new KotException(e);
         }
 
     }
@@ -355,8 +265,6 @@ public class MapperServiceImpl<T> implements MapperService<T> {
                 return baseMapper.insert(this.entity);
             case BATCH_INSERT:
                 return baseMapper.batchInsert(this.batchList);
-            case FIND_ONE:
-                return baseMapper.findOne(columnsBuilder(), conditionSql, conditionMap, this.entity);
             case LIST:
                 return baseMapper.list(columnsBuilder(), conditionSql, conditionMap, this.entity);
             case SELECT_PAGE:
@@ -368,7 +276,7 @@ public class MapperServiceImpl<T> implements MapperService<T> {
             case DELETE:
                 return baseMapper.delete(conditionSql, conditionMap, entity);
             default:
-                throw new RuntimeException("not find method: " + this.methodEnum);
+                throw new KotException("not find method: " + this.methodEnum);
         }
 
     }
@@ -628,6 +536,11 @@ public class MapperServiceImpl<T> implements MapperService<T> {
         return this;
     }
 
+    @Override public MapperService<T> activeRelated() {
+        this.activeRelated = true;
+        return this;
+    }
+
     /**
      * 实际查询条件
      */
@@ -815,7 +728,7 @@ public class MapperServiceImpl<T> implements MapperService<T> {
         /**
          * 调用函数
          */
-        INSERT, BATCH_INSERT, FIND_ONE, LIST, COUNT, SELECT_PAGE, UPDATE, DELETE
+        INSERT, BATCH_INSERT, LIST, COUNT, SELECT_PAGE, UPDATE, DELETE
     }
 
     /**
@@ -829,7 +742,7 @@ public class MapperServiceImpl<T> implements MapperService<T> {
      * 字段进行模糊查询
      */
     private boolean isLikeQuery() {
-        return Arrays.asList(FIND_ONE, LIST, COUNT, SELECT_PAGE, UPDATE).contains(this.methodEnum);
+        return Arrays.asList(LIST, COUNT, SELECT_PAGE, UPDATE).contains(this.methodEnum);
     }
 
     /**
