@@ -117,7 +117,7 @@ public class MapperServiceImpl<T> implements MapperService<T> {
         }
         // 关联字段查询
         if (this.activeRelated) {
-            new KotHelper().relatedHelp(entity, list, baseMapper);
+            KotHelper.relatedHelp(entity, list, baseMapper);
         }
         return list;
     }

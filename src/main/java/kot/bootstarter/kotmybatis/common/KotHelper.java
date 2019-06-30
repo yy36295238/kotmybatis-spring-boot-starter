@@ -16,12 +16,12 @@ import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 
-public class KotHelper<T> {
+public class KotHelper {
 
     /**
      * 关联字段帮助类
      */
-    public void relatedHelp(Object entity, List<T> list, BaseMapper baseMapper) {
+    public static <T> void relatedHelp(Object entity, List<T> list, BaseMapper baseMapper) {
         final KotTableInfo.TableInfo tableInfo = KotTableInfo.get(entity);
         final List<KotTableInfo.FieldWrapper> columnFields = tableInfo.getColumnFields();
         final Map<String, KotTableInfo.FieldWrapper> fieldWrapperMap = tableInfo.getFieldWrapperMap();
@@ -42,7 +42,6 @@ public class KotHelper<T> {
 
             try {
                 final KotTableInfo.TableInfo relatedTableInfo = KotTableInfo.get(relatedClazz.newInstance());
-                final Map<String, String> columnFieldMap = relatedTableInfo.getColumnFieldMap();
                 final String relatedTableName = relatedTableInfo.getTableName();
                 final List<Map<String, Object>> relatedMaps = baseMapper.relatedFindAll(relatedTableName, columns, pkColumn, relatedVals);
                 if (relatedMaps.size() <= 0) {
@@ -60,14 +59,15 @@ public class KotHelper<T> {
                         continue;
                     }
                     for (String column : related.columns()) {
-                        String relatedColumn = column.contains(".") ? column.split("\\.")[0] : column;
-                        String mappingColumn = column.contains(".") ? column.split("\\.")[1] : column;
+                        final String[] columnSplit = column.split("\\.");
+                        String relatedColumn = columnSplit.length == 1 ? column : columnSplit[0];
+                        String mappingColumn = columnSplit.length == 1 ? column : columnSplit[1];
                         final KotTableInfo.FieldWrapper newFieldWrapper = fieldWrapperMap.get(mappingColumn);
                         final Map<String, Object> relatedValMap = relatedMap.get(oriRelatedVal);
                         if (relatedValMap == null) {
                             continue;
                         }
-                        Object val = relatedValMap.containsKey(relatedColumn) ? relatedValMap.get(relatedColumn) : relatedValMap.get(columnFieldMap.get(relatedColumn));
+                        Object val = relatedValMap.get(relatedColumn);
                         KotBeanUtils.setField(newFieldWrapper.getField(), oriEntity, val);
                     }
                 }
