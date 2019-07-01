@@ -190,18 +190,15 @@ public class MapperServiceImpl<T> implements MapperService<T> {
         T whereEntity;
         try {
             whereEntity = (T) entity.getClass().newInstance();
-            final Field primaryField = KotTableInfo.get(entity).getPrimaryKey().getField();
+            final KotTableInfo.TableInfo tableInfo = KotTableInfo.get(entity);
+            final Field primaryField = tableInfo.getPrimaryKey().getField();
+            final KotTableInfo.FieldWrapper versionFieldWrapper = tableInfo.getVersionFieldWrapper();
             final Object primaryVal = KotBeanUtils.getFieldVal(primaryField, entity);
             Assert.notNull(primaryVal, "method [updateById] id is null");
-            // 乐观锁更新
-            final KotTableInfo.FieldWrapper fieldWrapper = versionLockFiled(entity);
-            if (fieldWrapper != null) {
-                final Object versionVal = KotBeanUtils.getFieldVal(fieldWrapper.getField(), entity);
-                if (versionVal != null) {
-                    KotBeanUtils.setField(fieldWrapper.getField(), whereEntity, versionVal);
-                }
-            }
             KotBeanUtils.setField(primaryField, whereEntity, primaryVal);
+            if (versionFieldWrapper != null) {
+                KotBeanUtils.setField(versionFieldWrapper.getField(), whereEntity, KotBeanUtils.getFieldVal(versionFieldWrapper.getField(), entity));
+            }
         } catch (InstantiationException | IllegalAccessException e) {
             throw new KotException(e);
         }
@@ -228,36 +225,35 @@ public class MapperServiceImpl<T> implements MapperService<T> {
         this.activeEntityCondition = false;
         // 判断该字段值存在
         final List<KotTableInfo.FieldWrapper> columnFields = KotTableInfo.get(entity).getColumnFields();
-        columnFields.forEach(fieldWrapper -> {
-            resetCondition();
-            if (fieldWrapper.getColumnAnno().unique()) {
-                final Object fieldVal = KotBeanUtils.getFieldVal(fieldWrapper.getField(), entity);
-                if (KotStringUtils.isNotEmpty(fieldVal)) {
-                    this.eq(fieldWrapper.getColumn(), fieldVal);
-                    final int count = this.count(entity);
-                    if (count > 0) {
-                        existMap.put(fieldWrapper.getFieldName(), fieldVal);
-                    }
-                }
+        for (KotTableInfo.FieldWrapper fieldWrapper : columnFields) {
+            this.resetCondition();
+            if (!fieldWrapper.getColumnAnno().unique()) {
+                continue;
             }
-        });
+            final Object fieldVal = KotBeanUtils.getFieldVal(fieldWrapper.getField(), entity);
+            if (KotStringUtils.isEmpty(fieldVal)) {
+                continue;
+            }
+            this.eq(fieldWrapper.getColumn(), fieldVal);
+            final int count = this.count(entity);
+            if (count > 0) {
+                existMap.put(fieldWrapper.getFieldName(), fieldVal);
+            }
+        }
         return existMap;
     }
 
+    /**
+     * 执行调用
+     */
     private Object execute() {
 
         if (this.entity != null) {
             tableInfo = KotTableInfo.get(this.entity);
         }
 
-        // 开启逻辑删除
-        if (!isSkipLogicDelMethod()) {
-            logicDel(false);
-        }
-        // 处理模糊查询
-        if (isLikeQuery()) {
-            likeQuery();
-        }
+        // 全局注解处理器
+        this.handleGlobalAnnotation();
 
         conditionSql = KotStringUtils.isBlank(conditionSql) ? conditionSql() : conditionSql;
         switch (this.methodEnum) {
@@ -279,23 +275,6 @@ public class MapperServiceImpl<T> implements MapperService<T> {
                 throw new KotException("not find method: " + this.methodEnum);
         }
 
-    }
-
-    private KotTableInfo.FieldWrapper logicDel(boolean isLogicDelete) {
-        if (!properties.isLogicDelete()) {
-            return null;
-        }
-        final KotTableInfo.FieldWrapper logicDelFieldWrapper = this.tableInfo.getLogicDelFieldWrapper();
-        if (logicDelFieldWrapper == null) {
-            return null;
-        }
-        if (logicDelFieldWrapper.getDeleteAnnoVal() == null) {
-            return null;
-        }
-        if (!isLogicDelete) {
-            this.neq(logicDelFieldWrapper.getColumn(), KotBeanUtils.cast(logicDelFieldWrapper.getField().getGenericType(), logicDelFieldWrapper.getDeleteAnnoVal()));
-        }
-        return logicDelFieldWrapper;
     }
 
     private Map<String, Object> map(Map<String, Object> conditionMap) {
@@ -536,7 +515,8 @@ public class MapperServiceImpl<T> implements MapperService<T> {
         return this;
     }
 
-    @Override public MapperService<T> activeRelated() {
+    @Override
+    public MapperService<T> activeRelated() {
         this.activeRelated = true;
         return this;
     }
@@ -611,62 +591,22 @@ public class MapperServiceImpl<T> implements MapperService<T> {
     }
 
     /**
-     * 实体条件
+     * 实体条件，注解处理
      */
     private void entityCondition() {
         if (!this.activeEntityCondition) {
             return;
         }
-        tableInfo.getColumnFields().forEach(fieldWrapper -> {
-            final Field field = fieldWrapper.getField();
-            field.setAccessible(true);
-            try {
-                final Object val = field.get(entity);
-                // 值不为空，并且不是模糊查询字段，才进行条件拼接
-                if (KotStringUtils.isNotEmpty(val) && (!fieldWrapper.getColumnAnno().isLike() || !activeLike)) {
-                    (eqMap = map(eqMap)).put(tableInfo.getFieldColumnMap().get(field.getName()), val);
-                    // 乐观锁设置
-                    if (isVersionLock(fieldWrapper)) {
-                        KotBeanUtils.setField(fieldWrapper.getField(), setEntity, KotBeanUtils.cast(fieldWrapper.getField().getGenericType(), String.valueOf(Long.valueOf(val.toString()) + 1)));
-                    }
-                }
-
-
-            } catch (IllegalAccessException e) {
-                throw new RuntimeException(e);
-            }
-        });
-    }
-
-    /**
-     * @Column(isLike=true) 模糊注解：模糊查询
-     */
-    private void likeQuery() {
-        final List<KotTableInfo.FieldWrapper> fields = this.tableInfo.getColumnFields();
-        fields.forEach(fieldWrapper -> {
-            if (fieldWrapper.getColumnAnno().isLike() && activeLike) {
-                final Object fieldVal = KotBeanUtils.getFieldVal(fieldWrapper.getField(), this.entity);
-                if (KotStringUtils.isNotEmpty(fieldVal)) {
-                    this.like(fieldWrapper.getColumn(), fieldVal);
-                }
-            }
-        });
-    }
-
-    private boolean isVersionLock(KotTableInfo.FieldWrapper fieldWrapper) {
-        return this.methodEnum == UPDATE && fieldWrapper.getColumnAnno().version();
-    }
-
-    private KotTableInfo.FieldWrapper versionLockFiled(T entity) {
-        final List<KotTableInfo.FieldWrapper> columnFields = KotTableInfo.get(entity).getColumnFields();
+        final List<KotTableInfo.FieldWrapper> columnFields = tableInfo.getColumnFields();
         for (KotTableInfo.FieldWrapper fieldWrapper : columnFields) {
-            if (fieldWrapper.getColumnAnno().version()) {
-                return fieldWrapper;
+            final Object fieldVal = KotBeanUtils.getFieldVal(fieldWrapper.getField(), this.entity);
+            if (KotStringUtils.isEmpty(fieldVal)) {
+                continue;
             }
+            (eqMap = map(eqMap)).put(fieldWrapper.getColumn(), fieldVal);
+            this.handleEntityAnnotation(fieldWrapper, fieldVal);
         }
-        return null;
     }
-
 
     /**
      * 构建SQL语句
@@ -739,19 +679,59 @@ public class MapperServiceImpl<T> implements MapperService<T> {
     }
 
     /**
-     * 字段进行模糊查询
-     */
-    private boolean isLikeQuery() {
-        return Arrays.asList(LIST, COUNT, SELECT_PAGE, UPDATE).contains(this.methodEnum);
-    }
-
-    /**
      * 重置查询条件
      */
     private void resetCondition() {
         this.eqMap = null;
         this.conditionSql = "";
         this.sqlBuilder = new StringBuilder();
+    }
+
+    private boolean isVersionLock(KotTableInfo.FieldWrapper fieldWrapper) {
+        return this.methodEnum == UPDATE && fieldWrapper.getColumnAnno().version();
+    }
+
+    /**
+     * 全局注解
+     */
+    private void handleGlobalAnnotation() {
+        // 开启逻辑删除
+        if (!isSkipLogicDelMethod()) {
+            logicDel(false);
+        }
+    }
+
+    /**
+     * 实体属性注解
+     */
+    private void handleEntityAnnotation(KotTableInfo.FieldWrapper fieldWrapper, Object fieldVal) {
+        // 模糊查询
+        if (fieldWrapper.getColumnAnno().isLike() && activeLike) {
+            this.like(fieldWrapper.getColumn(), fieldVal);
+            this.eqMap.remove(fieldWrapper.getColumn());
+        }
+        // 乐观锁设置
+        if (isVersionLock(fieldWrapper)) {
+            KotBeanUtils.setField(fieldWrapper.getField(), setEntity, KotBeanUtils.cast(fieldWrapper.getField().getGenericType(), String.valueOf(Long.valueOf(fieldVal.toString()) + 1)));
+            KotBeanUtils.setField(fieldWrapper.getField(), entity, fieldVal);
+        }
+    }
+
+    private KotTableInfo.FieldWrapper logicDel(boolean isLogicDelete) {
+        if (!properties.isLogicDelete()) {
+            return null;
+        }
+        final KotTableInfo.FieldWrapper logicDelFieldWrapper = this.tableInfo.getLogicDelFieldWrapper();
+        if (logicDelFieldWrapper == null) {
+            return null;
+        }
+        if (logicDelFieldWrapper.getDeleteAnnoVal() == null) {
+            return null;
+        }
+        if (!isLogicDelete) {
+            this.neq(logicDelFieldWrapper.getColumn(), KotBeanUtils.cast(logicDelFieldWrapper.getField().getGenericType(), logicDelFieldWrapper.getDeleteAnnoVal()));
+        }
+        return logicDelFieldWrapper;
     }
 
 }

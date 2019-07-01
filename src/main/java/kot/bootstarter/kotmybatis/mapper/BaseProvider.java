@@ -83,7 +83,11 @@ public class BaseProvider<T> implements ProviderMethodResolver {
     public String delete(Map<String, Object> map) {
         final T entity = (T) map.get(CT.ALIAS_ENTITY);
         final String conditionSql = (String) map.get(CT.SQL_CONDITION);
-        return new SQL().DELETE_FROM(tableName(entity)).WHERE(conditionSql).toString();
+        final SQL sql = new SQL().DELETE_FROM(tableName(entity));
+        if (KotStringUtils.isNotBlank(conditionSql)) {
+            sql.WHERE(conditionSql);
+        }
+        return sql.toString();
     }
 
     public String update(Map<String, Object> map) {

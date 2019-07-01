@@ -46,6 +46,10 @@ public class KotTableInfo {
          */
         private FieldWrapper logicDelFieldWrapper;
         /**
+         * 乐观锁字段
+         */
+        private FieldWrapper versionFieldWrapper;
+        /**
          * 表列属性
          */
         private List<FieldWrapper> columnFields;
@@ -122,6 +126,11 @@ public class KotTableInfo {
                 columnFieldMap.put(column, field.getName());
                 final FieldWrapper fieldWrapper = fieldWrapperBuilder.column(column).columnAnno(columnAnno).build();
                 columnFields.add(fieldWrapper);
+
+                // 乐观锁字段
+                if (columnAnno.version()) {
+                    builder.versionFieldWrapper(fieldWrapperBuilder.build());
+                }
             }
             fieldWrapperMap.put(field.getName(), fieldWrapperBuilder.build());
 
@@ -131,8 +140,7 @@ public class KotTableInfo {
                 builder.primaryKey(fieldWrapperBuilder.build());
             }
 
-
-            // 封装逻辑删除字段
+            // 逻辑删除字段
             final Delete deleteAnno = field.getAnnotation(Delete.class);
             if (deleteAnno != null) {
                 builder.logicDelFieldWrapper(fieldWrapperBuilder.deleteAnnoVal(deleteAnno.value()).build());
