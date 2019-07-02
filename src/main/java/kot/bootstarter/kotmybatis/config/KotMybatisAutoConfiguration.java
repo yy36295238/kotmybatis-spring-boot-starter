@@ -22,15 +22,15 @@ import java.util.Properties;
  */
 @Configuration
 @EnableConfigurationProperties(KotMybatisProperties.class)
-@ConditionalOnClass(MapperManagerService.class)
+@ConditionalOnClass(MapperManagerServiceImpl.class)
 public class KotMybatisAutoConfiguration {
 
     @Resource
     private KotMybatisProperties kotMybatisProperties;
 
     @Bean
-    @ConditionalOnMissingBean(MapperManagerService.class)
-    public MapperManagerService kotMongoTemplate() {
+    @ConditionalOnMissingBean(MapperManagerServiceImpl.class)
+    public MapperManagerService mapperManagerService() {
         return new MapperManagerServiceImpl();
     }
 

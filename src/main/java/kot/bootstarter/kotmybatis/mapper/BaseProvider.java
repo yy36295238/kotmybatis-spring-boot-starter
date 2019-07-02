@@ -34,7 +34,7 @@ public class BaseProvider<T> implements ProviderMethodResolver {
     private static final Map<Class, String> BATCH_INSERT_VALUE_CACHE = new ConcurrentHashMap<>();
 
     public String insert(T entity) {
-        String columns = KotTableInfo.get(entity).getColumns();
+        String columns = KotTableInfo.get(entity).getNoPkColumns();
         String values = insertValues(entity, false);
         return new SQL().INSERT_INTO(tableName(entity)).INTO_COLUMNS(columns).INTO_VALUES(values).toString();
     }
@@ -44,7 +44,7 @@ public class BaseProvider<T> implements ProviderMethodResolver {
         Assert.notEmpty(list, "[批量插入数据,List不能为空]");
         final T entity = list.get(0);
 
-        String columns = KotTableInfo.get(entity).getColumns();
+        String columns = KotTableInfo.get(entity).getNoPkColumns();
         String batchValues = insertValues(entity, true);
 
         final SQL sql = new SQL().INSERT_INTO(tableName(entity)).INTO_COLUMNS(columns);
@@ -120,7 +120,9 @@ public class BaseProvider<T> implements ProviderMethodResolver {
             final KotTableInfo.TableInfo tableInfo = KotTableInfo.get(entity);
             final List<KotTableInfo.FieldWrapper> fieldsList = tableInfo.getColumnFields();
             for (KotTableInfo.FieldWrapper fieldWrapper : fieldsList) {
-
+                if (fieldWrapper.isPk()) {
+                    continue;
+                }
                 Field field = fieldWrapper.getField();
                 field.setAccessible(true);
                 valuesBuilder.append("#{");

@@ -42,6 +42,10 @@ public class KotTableInfo {
          */
         private String columns;
         /**
+         * 无主键表列集合:(name,create_time...)
+         */
+        private String noPkColumns;
+        /**
          * 逻辑删除字段
          */
         private FieldWrapper logicDelFieldWrapper;
@@ -75,6 +79,7 @@ public class KotTableInfo {
         private List<Annotation> annotations;
         private String deleteAnnoVal;
         private Column columnAnno;
+        private boolean isPk;
 
     }
 
@@ -106,6 +111,7 @@ public class KotTableInfo {
         Map<String, String> columnFieldMap = new HashMap<>();
         Map<String, FieldWrapper> fieldWrapperMap = new HashMap<>();
         StringBuilder columnBuilder = new StringBuilder();
+        StringBuilder noPkColumnBuilder = new StringBuilder();
         final Field[] declaredFields = entityClass.getDeclaredFields();
         for (Field field : declaredFields) {
 
@@ -115,12 +121,23 @@ public class KotTableInfo {
             // 封装属性
             final FieldWrapper.FieldWrapperBuilder fieldWrapperBuilder = FieldWrapper.builder().field(field).fieldName(field.getName()).annotations(annotations);
 
-            String column;
+            // 获取主键
+            final ID id = field.getAnnotation(ID.class);
+
+            // 逻辑删除字段
+            final Delete deleteAnno = field.getAnnotation(Delete.class);
+
             final Column columnAnno = field.getAnnotation(Column.class);
             if (columnAnno != null) {
-                column = columnAnno.value();
-                // 封装列
-                columnBuilder.append("`").append(column).append("`").append(CT.SPILT);
+                String column = columnAnno.value();
+                if (id == null) {
+                    // 无主键列
+                    noPkColumnBuilder.append(column).append(CT.SPILT);
+                } else {
+                    builder.primaryKey(fieldWrapperBuilder.column(column).isPk(true).build());
+                }
+                // 全字段列
+                columnBuilder.append(column).append(CT.SPILT);
                 // 属性和列映射
                 fieldColumnMap.put(field.getName(), column);
                 columnFieldMap.put(column, field.getName());
@@ -131,26 +148,21 @@ public class KotTableInfo {
                 if (columnAnno.version()) {
                     builder.versionFieldWrapper(fieldWrapperBuilder.build());
                 }
+
+                // 逻辑删除字段
+                if (deleteAnno != null) {
+                    builder.logicDelFieldWrapper(fieldWrapperBuilder.deleteAnnoVal(deleteAnno.value()).build());
+                }
             }
             fieldWrapperMap.put(field.getName(), fieldWrapperBuilder.build());
 
-            // 获取主键
-            final ID id = field.getAnnotation(ID.class);
-            if (id != null) {
-                builder.primaryKey(fieldWrapperBuilder.build());
-            }
-
-            // 逻辑删除字段
-            final Delete deleteAnno = field.getAnnotation(Delete.class);
-            if (deleteAnno != null) {
-                builder.logicDelFieldWrapper(fieldWrapperBuilder.deleteAnnoVal(deleteAnno.value()).build());
-            }
 
         }
         Assert.hasLength(columnBuilder.toString(), "[实体: " + entityClass.getSimpleName() + "]中属性注解:[@Column]一个都不存在");
         KotStringUtils.delLastChat(columnBuilder);
+        KotStringUtils.delLastChat(noPkColumnBuilder);
 
-        return builder.tableName(tableNameAnnotation.value()).columns(columnBuilder.toString())
+        return builder.tableName(tableNameAnnotation.value()).columns(columnBuilder.toString()).noPkColumns(noPkColumnBuilder.toString())
                 .fieldColumnMap(fieldColumnMap).columnFieldMap(columnFieldMap).columnFields(columnFields)
                 .fieldWrapperMap(fieldWrapperMap)
                 .build();
