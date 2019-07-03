@@ -17,7 +17,14 @@ import java.util.Properties;
 @Intercepts({@Signature(type = ResultSetHandler.class, method = "handleResultSets", args = java.sql.Statement.class)})
 public class MapResultToCamelPlugin implements Interceptor {
 
-    private boolean underSoreToCamel;
+    private boolean underSoreToCamel = true;
+
+    public MapResultToCamelPlugin() {
+    }
+
+    public MapResultToCamelPlugin(Properties properties) {
+        this.setProperties(properties);
+    }
 
     @Override
     public Object intercept(Invocation invocation) throws Throwable {

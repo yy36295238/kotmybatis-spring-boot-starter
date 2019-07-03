@@ -1,5 +1,7 @@
 package kot.bootstarter.kotmybatis.service.impl;
 
+import com.github.pagehelper.PageHelper;
+import com.github.pagehelper.PageInfo;
 import kot.bootstarter.kotmybatis.common.CT;
 import kot.bootstarter.kotmybatis.common.KotHelper;
 import kot.bootstarter.kotmybatis.common.Page;
@@ -65,7 +67,6 @@ public class MapperServiceImpl<T> implements MapperService<T> {
      */
     private boolean activeEntityCondition = true;
 
-
     MapperServiceImpl(BaseMapper<T> baseMapper, KotMybatisProperties properties) {
         this.baseMapper = baseMapper;
         this.properties = properties;
@@ -129,29 +130,35 @@ public class MapperServiceImpl<T> implements MapperService<T> {
         return (int) execute();
     }
 
+//    @Override
+//    public Page<T> selectPage(Page<T> page, T entity) {
+//        this.entity = entity;
+//        this.page = page;
+//        boolean containsOrderBy = false;
+//        // count 不拼接 order by
+//        Object orderBy = conditionMap.get(CT.ORDER_BY);
+//        if (conditionMap.containsKey(CT.ORDER_BY)) {
+//            containsOrderBy = true;
+//            conditionMap.remove(CT.ORDER_BY);
+//        }
+//        final int count = count(entity);
+//        if (count <= 0) {
+//            return page;
+//        }
+//        if (containsOrderBy) {
+//            conditionMap.put(CT.ORDER_BY, orderBy);
+//        }
+//        this.methodEnum = SELECT_PAGE;
+//        final List<T> list = (List<T>) execute();
+//        page.setData(list);
+//        page.setTotal(count);
+//        return page;
+//    }
+
     @Override
-    public Page<T> selectPage(Page<T> page, T entity) {
-        this.entity = entity;
-        this.page = page;
-        boolean containsOrderBy = false;
-        // count 不拼接 order by
-        Object orderBy = conditionMap.get(CT.ORDER_BY);
-        if (conditionMap.containsKey(CT.ORDER_BY)) {
-            containsOrderBy = true;
-            conditionMap.remove(CT.ORDER_BY);
-        }
-        final int count = count(entity);
-        if (count <= 0) {
-            return page;
-        }
-        if (containsOrderBy) {
-            conditionMap.put(CT.ORDER_BY, orderBy);
-        }
-        this.methodEnum = SELECT_PAGE;
-        final List<T> list = (List<T>) execute();
-        page.setData(list);
-        page.setTotal(count);
-        return page;
+    public PageInfo<T> selectPage(Page<T> page, T entity) {
+        PageHelper.startPage(page.getPageIndex(), page.getPageSize());
+        return new PageInfo<>(this.list(entity));
     }
 
     @Override
