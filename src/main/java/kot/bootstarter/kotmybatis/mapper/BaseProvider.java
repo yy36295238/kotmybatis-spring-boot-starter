@@ -34,28 +34,15 @@ public class BaseProvider<T> implements ProviderMethodResolver {
     private static final Map<Class, String> BATCH_INSERT_VALUE_CACHE = new ConcurrentHashMap<>();
 
     public String insert(T entity) {
-        final KotTableInfo.TableInfo tableInfo = KotTableInfo.get(entity);
-        final Field pkField = tableInfo.getPrimaryKey().getField();
-        final ID idAnno = pkField.getAnnotation(ID.class);
-        boolean isAuto = idAnno.idType() == ID.IdType.AUTO;
-        String columns = isAuto ? tableInfo.getNoPkColumns() : tableInfo.getColumns();
         String values = insertValues(entity, false);
-        return new SQL().INSERT_INTO(tableName(entity)).INTO_COLUMNS(columns).INTO_VALUES(values).toString();
+        return new SQL().INSERT_INTO(tableName(entity)).INTO_COLUMNS(insertColumns(entity)).INTO_VALUES(values).toString();
     }
 
     public String batchInsert(Map<String, List<T>> map) {
-        final List<T> list = map.get("list");
-        Assert.notEmpty(list, "[批量插入数据,List不能为空]");
+        final List<T> list = map.get(CT.KOT_LIST);
         final T entity = list.get(0);
-        final KotTableInfo.TableInfo tableInfo = KotTableInfo.get(entity);
-        final Field pkField = tableInfo.getPrimaryKey().getField();
-        final ID idAnno = pkField.getAnnotation(ID.class);
-        boolean isAuto = idAnno.idType() == ID.IdType.AUTO;
-        String columns = isAuto ? tableInfo.getNoPkColumns() : tableInfo.getColumns();
         String batchValues = insertValues(entity, true);
-
-        final SQL sql = new SQL().INSERT_INTO(tableName(entity)).INTO_COLUMNS(columns);
-
+        final SQL sql = new SQL().INSERT_INTO(tableName(entity)).INTO_COLUMNS(insertColumns(entity));
         final StringBuilder valuesBuilder = new StringBuilder();
 
         for (int i = 0; i < list.size(); i++) {
@@ -113,7 +100,6 @@ public class BaseProvider<T> implements ProviderMethodResolver {
         String values;
         StringBuilder valuesBuilder = new StringBuilder();
         try {
-
             final KotTableInfo.TableInfo tableInfo = KotTableInfo.get(entity);
             final List<KotTableInfo.FieldWrapper> fieldsList = tableInfo.getColumnFields();
             for (KotTableInfo.FieldWrapper fieldWrapper : fieldsList) {
@@ -124,7 +110,7 @@ public class BaseProvider<T> implements ProviderMethodResolver {
                 field.setAccessible(true);
                 valuesBuilder.append("#{");
                 if (batch) {
-                    valuesBuilder.append("list[%d].");
+                    valuesBuilder.append(CT.KOT_LIST).append("[%d].");
                 }
                 valuesBuilder.append(field.getName()).append("}").append(CT.SPILT);
             }
@@ -189,6 +175,13 @@ public class BaseProvider<T> implements ProviderMethodResolver {
      */
     private static String tableName(Object entity) {
         return KotTableInfo.get(entity).getTableName();
+    }
+
+    private String insertColumns(T entity) {
+        final KotTableInfo.TableInfo tableInfo = KotTableInfo.get(entity);
+        final Field pkField = tableInfo.getPrimaryKey().getField();
+        final ID idAnno = pkField.getAnnotation(ID.class);
+        return idAnno.idType() == ID.IdType.AUTO ? tableInfo.getNoPkColumns() : tableInfo.getColumns();
     }
 
 

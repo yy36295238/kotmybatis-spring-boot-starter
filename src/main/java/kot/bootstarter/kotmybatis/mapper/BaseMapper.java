@@ -1,7 +1,6 @@
 package kot.bootstarter.kotmybatis.mapper;
 
 import kot.bootstarter.kotmybatis.common.CT;
-import kot.bootstarter.kotmybatis.common.id.IdGeneratorFactory;
 import org.apache.ibatis.annotations.*;
 
 import java.util.List;
@@ -17,13 +16,13 @@ public interface BaseMapper<T> {
      * 插入操作
      */
     @InsertProvider(type = BaseProvider.class)
-    int insert(@Param(CT.ALIAS_ENTITY) T entity, @Param(CT.ID_GENERATOR_FACTORY) IdGeneratorFactory idGeneratorFactory);
+    int insert(T entity);
 
     /**
      * 批量插入操作
      */
     @InsertProvider(type = BaseProvider.class)
-    int batchInsert(@Param("list") List<T> list, @Param(CT.ID_GENERATOR_FACTORY) IdGeneratorFactory idGeneratorFactory);
+    int batchInsert(@Param(CT.KOT_LIST) List<T> list);
 
     /**
      * 查询操作

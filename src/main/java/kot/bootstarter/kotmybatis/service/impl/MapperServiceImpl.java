@@ -54,16 +54,16 @@ public class MapperServiceImpl<T> implements MapperService<T> {
     /**
      * 开启字段模糊查询
      */
-    private boolean activeLike = false;
+    private boolean activeLike;
     /**
      * 开启关联字段查询
      */
-    private boolean activeRelated = false;
+    private boolean activeRelated;
     /**
      * 按主键排序
      */
-    private boolean orderByIdAsc = false;
-    private boolean orderByIdDesc = false;
+    private boolean orderByIdAsc;
+    private boolean orderByIdDesc;
 
     /**
      * 开启实体条件
@@ -96,8 +96,16 @@ public class MapperServiceImpl<T> implements MapperService<T> {
 
     @Override
     public int batchInsert(List<T> batchList) {
+        Assert.notEmpty(batchList, "[批量插入数据,List不能为空]");
         this.methodEnum = MethodEnum.BATCH_INSERT;
         this.batchList = batchList;
+        final T entity = batchList.get(0);
+        final KotTableInfo.FieldWrapper fieldWrapper = KotTableInfo.get(entity).getPrimaryKey();
+        final ID.IdType idType = fieldWrapper.getField().getAnnotation(ID.class).idType();
+        final IdGenerator idGenerator = idGeneratorFactory.get(idType);
+        if (idGenerator != null) {
+            this.batchList.forEach(o -> KotBeanUtils.setField(fieldWrapper.getField(), o, idGenerator.gen()));
+        }
         return (int) execute();
     }
 
@@ -250,9 +258,9 @@ public class MapperServiceImpl<T> implements MapperService<T> {
         conditionSql = KotStringUtils.isBlank(conditionSql) ? conditionSql() : conditionSql;
         switch (this.methodEnum) {
             case INSERT:
-                return baseMapper.insert(this.entity, idGeneratorFactory);
+                return baseMapper.insert(this.entity);
             case BATCH_INSERT:
-                return baseMapper.batchInsert(this.batchList, idGeneratorFactory);
+                return baseMapper.batchInsert(this.batchList);
             case LIST:
                 return baseMapper.list(columnsBuilder(), conditionSql, conditionMap, this.entity);
             case COUNT:

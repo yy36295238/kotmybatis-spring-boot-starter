@@ -1,6 +1,7 @@
 package kot.bootstarter.kotmybatis.plugin;
 
 import kot.bootstarter.kotmybatis.annotation.TableName;
+import kot.bootstarter.kotmybatis.common.CT;
 import kot.bootstarter.kotmybatis.config.KotTableInfo;
 import org.apache.ibatis.executor.keygen.Jdbc3KeyGenerator;
 import org.apache.ibatis.executor.statement.StatementHandler;
@@ -10,6 +11,8 @@ import org.apache.ibatis.reflection.MetaObject;
 import org.apache.ibatis.reflection.SystemMetaObject;
 
 import java.sql.Statement;
+import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
 
@@ -38,11 +41,20 @@ public class KeyPropertiesPlugin implements Interceptor {
             if (param == null) {
                 return wrap;
             }
-            final TableName tableNameAnno = param.getClass().getAnnotation(TableName.class);
+            Object enity = param;
+            if (param instanceof Map) {
+                final Map map = (Map) param;
+                if (!map.containsKey(CT.KOT_LIST)) {
+                    return wrap;
+                }
+                List list = (List) map.get(CT.KOT_LIST);
+                enity = list.get(0);
+            }
+            final TableName tableNameAnno = enity.getClass().getAnnotation(TableName.class);
             if (tableNameAnno == null) {
                 return wrap;
             }
-            final KotTableInfo.FieldWrapper fieldWrapper = KotTableInfo.get(param).getPrimaryKey();
+            final KotTableInfo.FieldWrapper fieldWrapper = KotTableInfo.get(enity).getPrimaryKey();
             metaObject.setValue("delegate.mappedStatement.keyGenerator", new Jdbc3KeyGenerator());
             final String[] keyProperties = new String[1];
             keyProperties[0] = fieldWrapper.getFieldName();
