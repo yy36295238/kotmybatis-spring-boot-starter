@@ -1,7 +1,7 @@
 package kot.bootstarter.kotmybatis.mapper;
 
 import kot.bootstarter.kotmybatis.common.CT;
-import kot.bootstarter.kotmybatis.common.Page;
+import kot.bootstarter.kotmybatis.common.id.IdGeneratorFactory;
 import org.apache.ibatis.annotations.*;
 
 import java.util.List;
@@ -17,13 +17,13 @@ public interface BaseMapper<T> {
      * 插入操作
      */
     @InsertProvider(type = BaseProvider.class)
-    int insert(T entity);
+    int insert(@Param(CT.ALIAS_ENTITY) T entity, @Param(CT.ID_GENERATOR_FACTORY) IdGeneratorFactory idGeneratorFactory);
 
     /**
      * 批量插入操作
      */
     @InsertProvider(type = BaseProvider.class)
-    int batchInsert(@Param("list") List<T> list);
+    int batchInsert(@Param("list") List<T> list, @Param(CT.ID_GENERATOR_FACTORY) IdGeneratorFactory idGeneratorFactory);
 
     /**
      * 查询操作
@@ -46,8 +46,6 @@ public interface BaseMapper<T> {
     @SelectProvider(type = BaseProvider.class)
     int count(@Param(CT.SQL_CONDITION) String conditionList, @Param(CT.ALIAS_CONDITION) Map<String, Object> conditionMap, @Param(CT.ALIAS_ENTITY) T entity);
 
-    @SelectProvider(type = BaseProvider.class)
-    List<T> selectPage(@Param(CT.COLUMNS) Set<String> columns, @Param(CT.SQL_CONDITION) String conditionList, @Param("page") Page page, @Param(CT.ALIAS_CONDITION) Map<String, Object> conditionMap, @Param(CT.ALIAS_ENTITY) T entity);
 
     @DeleteProvider(type = BaseProvider.class)
     int delete(@Param(CT.SQL_CONDITION) String conditionList, @Param(CT.ALIAS_CONDITION) Map<String, Object> conditionMap, @Param(CT.ALIAS_ENTITY) T entity);

@@ -22,7 +22,7 @@ public @interface ID {
         /**
          * 主键生成类型
          */
-        AUTO, UUID, SNOW_FLAKE;
+        AUTO, UUID, SNOW_FLAKE, CUSTOMIZE;
     }
 
 

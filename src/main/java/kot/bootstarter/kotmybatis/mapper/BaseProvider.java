@@ -2,10 +2,7 @@ package kot.bootstarter.kotmybatis.mapper;
 
 import kot.bootstarter.kotmybatis.annotation.ID;
 import kot.bootstarter.kotmybatis.common.CT;
-import kot.bootstarter.kotmybatis.common.Page;
-import kot.bootstarter.kotmybatis.common.id.IdGeneratorFactory;
 import kot.bootstarter.kotmybatis.config.KotTableInfo;
-import kot.bootstarter.kotmybatis.utils.KotBeanUtils;
 import kot.bootstarter.kotmybatis.utils.KotStringUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -42,10 +39,6 @@ public class BaseProvider<T> implements ProviderMethodResolver {
         final ID idAnno = pkField.getAnnotation(ID.class);
         boolean isAuto = idAnno.idType() == ID.IdType.AUTO;
         String columns = isAuto ? tableInfo.getNoPkColumns() : tableInfo.getColumns();
-        // 主键设置自定义值
-        if (!isAuto) {
-            KotBeanUtils.setField(pkField, entity, IdGeneratorFactory.get(idAnno.idType()).gen());
-        }
         String values = insertValues(entity, false);
         return new SQL().INSERT_INTO(tableName(entity)).INTO_COLUMNS(columns).INTO_VALUES(values).toString();
     }
@@ -68,10 +61,6 @@ public class BaseProvider<T> implements ProviderMethodResolver {
         for (int i = 0; i < list.size(); i++) {
             //拼接单个values,(#{list[0].a})
             valuesBuilder.append("(").append(batchValues.replaceAll("%d", i + "")).append(")").append(CT.SPILT);
-            // 主键设置自定义值
-            if (!isAuto) {
-                KotBeanUtils.setField(pkField, list.get(i), IdGeneratorFactory.get(idAnno.idType()).gen());
-            }
         }
         KotStringUtils.delLastChat(valuesBuilder);
 
@@ -87,13 +76,6 @@ public class BaseProvider<T> implements ProviderMethodResolver {
         return selectGeneralSql(map, new SQL(), "COUNT(*)").toString();
     }
 
-    public String selectPage(Map<String, Object> map) {
-        final T entity = (T) map.get(CT.ALIAS_ENTITY);
-        final Page page = (Page) map.get("page");
-        int pageIndex = (page.getPageIndex() - 1) * page.getPageSize();
-        final SQL sql = selectGeneralSql(map, new SQL(), KotTableInfo.get(entity).getColumns());
-        return sql.toString() + CT.LIMIT + pageIndex + CT.SPILT + page.getPageSize();
-    }
 
     public String delete(Map<String, Object> map) {
         final T entity = (T) map.get(CT.ALIAS_ENTITY);

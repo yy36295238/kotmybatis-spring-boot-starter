@@ -1,5 +1,6 @@
 package kot.bootstarter.kotmybatis.service.impl;
 
+import kot.bootstarter.kotmybatis.common.id.IdGeneratorFactory;
 import kot.bootstarter.kotmybatis.mapper.BaseMapper;
 import kot.bootstarter.kotmybatis.properties.KotMybatisProperties;
 import kot.bootstarter.kotmybatis.service.MapperManagerService;
@@ -21,13 +22,16 @@ public class MapperManagerServiceImpl<T> implements MapperManagerService<T> {
     @Resource
     private KotMybatisProperties properties;
 
+    @Autowired
+    private IdGeneratorFactory idGeneratorFactory;
+
     @Override
     public MapperService<T> newQuery() {
-        return new MapperServiceImpl<>(baseMapper, properties);
+        return new MapperServiceImpl<>(baseMapper, properties, idGeneratorFactory);
     }
 
     @Override
     public MapperService<T> newUpdate() {
-        return new MapperServiceImpl<>(baseMapper, properties);
+        return new MapperServiceImpl<>(baseMapper, properties, idGeneratorFactory);
     }
 }

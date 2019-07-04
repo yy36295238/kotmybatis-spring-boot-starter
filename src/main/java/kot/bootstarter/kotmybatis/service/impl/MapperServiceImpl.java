@@ -39,8 +39,8 @@ public class MapperServiceImpl<T> implements MapperService<T> {
 
     private KotMybatisProperties properties;
 
+    private IdGeneratorFactory idGeneratorFactory;
 
-    private Page<T> page;
     private T entity;
     private T setEntity;
     private MethodEnum methodEnum;
@@ -70,9 +70,10 @@ public class MapperServiceImpl<T> implements MapperService<T> {
      */
     private boolean activeEntityCondition = true;
 
-    MapperServiceImpl(BaseMapper<T> baseMapper, KotMybatisProperties properties) {
+    MapperServiceImpl(BaseMapper<T> baseMapper, KotMybatisProperties properties, IdGeneratorFactory idGeneratorFactory) {
         this.baseMapper = baseMapper;
         this.properties = properties;
+        this.idGeneratorFactory = idGeneratorFactory;
     }
 
     /**
@@ -86,7 +87,7 @@ public class MapperServiceImpl<T> implements MapperService<T> {
         this.entity = entity;
         final KotTableInfo.FieldWrapper fieldWrapper = KotTableInfo.get(entity).getPrimaryKey();
         final ID.IdType idType = fieldWrapper.getField().getAnnotation(ID.class).idType();
-        final IdGenerator idGenerator = IdGeneratorFactory.get(idType);
+        final IdGenerator idGenerator = idGeneratorFactory.get(idType);
         if (idGenerator != null) {
             KotBeanUtils.setField(fieldWrapper.getField(), entity, idGenerator.gen());
         }
@@ -249,13 +250,11 @@ public class MapperServiceImpl<T> implements MapperService<T> {
         conditionSql = KotStringUtils.isBlank(conditionSql) ? conditionSql() : conditionSql;
         switch (this.methodEnum) {
             case INSERT:
-                return baseMapper.insert(this.entity);
+                return baseMapper.insert(this.entity, idGeneratorFactory);
             case BATCH_INSERT:
-                return baseMapper.batchInsert(this.batchList);
+                return baseMapper.batchInsert(this.batchList, idGeneratorFactory);
             case LIST:
                 return baseMapper.list(columnsBuilder(), conditionSql, conditionMap, this.entity);
-            case SELECT_PAGE:
-                return baseMapper.selectPage(columnsBuilder(), conditionSql, this.page, conditionMap, this.entity);
             case COUNT:
                 return baseMapper.count(conditionSql, conditionMap, this.entity);
             case UPDATE:
@@ -659,7 +658,7 @@ public class MapperServiceImpl<T> implements MapperService<T> {
         /**
          * 调用函数
          */
-        INSERT, BATCH_INSERT, LIST, COUNT, SELECT_PAGE, UPDATE, DELETE
+        INSERT, BATCH_INSERT, LIST, COUNT, UPDATE, DELETE
     }
 
     /**

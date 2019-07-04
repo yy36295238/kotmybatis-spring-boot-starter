@@ -2,6 +2,7 @@ package kot.bootstarter.kotmybatis.config;
 
 
 import kot.bootstarter.kotmybatis.common.CT;
+import kot.bootstarter.kotmybatis.common.id.IdGeneratorFactory;
 import kot.bootstarter.kotmybatis.plugin.KeyPropertiesPlugin;
 import kot.bootstarter.kotmybatis.plugin.MapResultToCamelPlugin;
 import kot.bootstarter.kotmybatis.properties.KotMybatisProperties;
@@ -10,7 +11,9 @@ import org.mybatis.spring.boot.autoconfigure.MybatisAutoConfiguration;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import javax.annotation.PostConstruct;
@@ -32,6 +35,12 @@ public class KotMybatisAutoConfiguration {
 
     @Autowired
     private KotMybatisProperties kotMybatisProperties;
+
+    @Bean
+    @ConditionalOnMissingBean(IdGeneratorFactory.class)
+    public IdGeneratorFactory idGeneratorFactory() {
+        return new IdGeneratorFactory();
+    }
 
     @PostConstruct
     public void kotInterceptor() {
