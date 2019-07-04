@@ -12,10 +12,15 @@ public class KotMybatisProperties {
     /**
      * 逻辑删除：默认关闭
      */
-    private boolean logicDelete = false;
+    private boolean logicDelete;
 
     /**
      * Map类型下划线转驼峰
      */
-    private boolean underSoreToCamel = false;
+    private boolean mapResultUnderSoreToCamel;
+
+    /**
+     * 实体结果集下划线转驼峰
+     */
+    protected boolean entityResultUnderSoreToCamel;
 }

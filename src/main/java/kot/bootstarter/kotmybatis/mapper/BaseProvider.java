@@ -1,8 +1,11 @@
 package kot.bootstarter.kotmybatis.mapper;
 
+import kot.bootstarter.kotmybatis.annotation.ID;
 import kot.bootstarter.kotmybatis.common.CT;
 import kot.bootstarter.kotmybatis.common.Page;
+import kot.bootstarter.kotmybatis.common.id.IdGeneratorFactory;
 import kot.bootstarter.kotmybatis.config.KotTableInfo;
+import kot.bootstarter.kotmybatis.utils.KotBeanUtils;
 import kot.bootstarter.kotmybatis.utils.KotStringUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -34,7 +37,15 @@ public class BaseProvider<T> implements ProviderMethodResolver {
     private static final Map<Class, String> BATCH_INSERT_VALUE_CACHE = new ConcurrentHashMap<>();
 
     public String insert(T entity) {
-        String columns = KotTableInfo.get(entity).getNoPkColumns();
+        final KotTableInfo.TableInfo tableInfo = KotTableInfo.get(entity);
+        final Field pkField = tableInfo.getPrimaryKey().getField();
+        final ID idAnno = pkField.getAnnotation(ID.class);
+        boolean isAuto = idAnno.idType() == ID.IdType.AUTO;
+        String columns = isAuto ? tableInfo.getNoPkColumns() : tableInfo.getColumns();
+        // 主键设置自定义值
+        if (!isAuto) {
+            KotBeanUtils.setField(pkField, entity, IdGeneratorFactory.get(idAnno.idType()).gen());
+        }
         String values = insertValues(entity, false);
         return new SQL().INSERT_INTO(tableName(entity)).INTO_COLUMNS(columns).INTO_VALUES(values).toString();
     }
@@ -43,8 +54,11 @@ public class BaseProvider<T> implements ProviderMethodResolver {
         final List<T> list = map.get("list");
         Assert.notEmpty(list, "[批量插入数据,List不能为空]");
         final T entity = list.get(0);
-
-        String columns = KotTableInfo.get(entity).getNoPkColumns();
+        final KotTableInfo.TableInfo tableInfo = KotTableInfo.get(entity);
+        final Field pkField = tableInfo.getPrimaryKey().getField();
+        final ID idAnno = pkField.getAnnotation(ID.class);
+        boolean isAuto = idAnno.idType() == ID.IdType.AUTO;
+        String columns = isAuto ? tableInfo.getNoPkColumns() : tableInfo.getColumns();
         String batchValues = insertValues(entity, true);
 
         final SQL sql = new SQL().INSERT_INTO(tableName(entity)).INTO_COLUMNS(columns);
@@ -53,10 +67,11 @@ public class BaseProvider<T> implements ProviderMethodResolver {
 
         for (int i = 0; i < list.size(); i++) {
             //拼接单个values,(#{list[0].a})
-            valuesBuilder.append("(")
-                    .append(batchValues.replaceAll("%d", i + ""))
-                    .append(")")
-                    .append(CT.SPILT);
+            valuesBuilder.append("(").append(batchValues.replaceAll("%d", i + "")).append(")").append(CT.SPILT);
+            // 主键设置自定义值
+            if (!isAuto) {
+                KotBeanUtils.setField(pkField, list.get(i), IdGeneratorFactory.get(idAnno.idType()).gen());
+            }
         }
         KotStringUtils.delLastChat(valuesBuilder);
 
@@ -120,7 +135,7 @@ public class BaseProvider<T> implements ProviderMethodResolver {
             final KotTableInfo.TableInfo tableInfo = KotTableInfo.get(entity);
             final List<KotTableInfo.FieldWrapper> fieldsList = tableInfo.getColumnFields();
             for (KotTableInfo.FieldWrapper fieldWrapper : fieldsList) {
-                if (fieldWrapper.isPk()) {
+                if (fieldWrapper.isPk() && fieldWrapper.getField().getAnnotation(ID.class).idType() == ID.IdType.AUTO) {
                     continue;
                 }
                 Field field = fieldWrapper.getField();

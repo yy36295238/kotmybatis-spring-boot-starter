@@ -2,9 +2,12 @@ package kot.bootstarter.kotmybatis.service.impl;
 
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
+import kot.bootstarter.kotmybatis.annotation.ID;
 import kot.bootstarter.kotmybatis.common.CT;
 import kot.bootstarter.kotmybatis.common.KotHelper;
 import kot.bootstarter.kotmybatis.common.Page;
+import kot.bootstarter.kotmybatis.common.id.IdGenerator;
+import kot.bootstarter.kotmybatis.common.id.IdGeneratorFactory;
 import kot.bootstarter.kotmybatis.config.KotTableInfo;
 import kot.bootstarter.kotmybatis.enums.ConditionEnum;
 import kot.bootstarter.kotmybatis.exception.KotException;
@@ -81,6 +84,12 @@ public class MapperServiceImpl<T> implements MapperService<T> {
     public int insert(T entity) {
         this.methodEnum = MethodEnum.INSERT;
         this.entity = entity;
+        final KotTableInfo.FieldWrapper fieldWrapper = KotTableInfo.get(entity).getPrimaryKey();
+        final ID.IdType idType = fieldWrapper.getField().getAnnotation(ID.class).idType();
+        final IdGenerator idGenerator = IdGeneratorFactory.get(idType);
+        if (idGenerator != null) {
+            KotBeanUtils.setField(fieldWrapper.getField(), entity, idGenerator.gen());
+        }
         return (int) execute();
     }
 
@@ -129,31 +138,6 @@ public class MapperServiceImpl<T> implements MapperService<T> {
         this.entity = entity;
         return (int) execute();
     }
-
-//    @Override
-//    public Page<T> selectPage(Page<T> page, T entity) {
-//        this.entity = entity;
-//        this.page = page;
-//        boolean containsOrderBy = false;
-//        // count 不拼接 order by
-//        Object orderBy = conditionMap.get(CT.ORDER_BY);
-//        if (conditionMap.containsKey(CT.ORDER_BY)) {
-//            containsOrderBy = true;
-//            conditionMap.remove(CT.ORDER_BY);
-//        }
-//        final int count = count(entity);
-//        if (count <= 0) {
-//            return page;
-//        }
-//        if (containsOrderBy) {
-//            conditionMap.put(CT.ORDER_BY, orderBy);
-//        }
-//        this.methodEnum = SELECT_PAGE;
-//        final List<T> list = (List<T>) execute();
-//        page.setData(list);
-//        page.setTotal(count);
-//        return page;
-//    }
 
     @Override
     public PageInfo<T> selectPage(Page<T> page, T entity) {
