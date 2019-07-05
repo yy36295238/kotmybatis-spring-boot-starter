@@ -3,12 +3,12 @@ package kot.bootstarter.kotmybatis.mapper;
 import kot.bootstarter.kotmybatis.annotation.ID;
 import kot.bootstarter.kotmybatis.common.CT;
 import kot.bootstarter.kotmybatis.config.KotTableInfo;
+import kot.bootstarter.kotmybatis.properties.KotMybatisProperties;
 import kot.bootstarter.kotmybatis.utils.KotStringUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.ibatis.builder.annotation.ProviderMethodResolver;
 import org.apache.ibatis.jdbc.SQL;
-import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 
 import java.lang.reflect.Field;
@@ -24,25 +24,16 @@ import java.util.concurrent.ConcurrentHashMap;
 public class BaseProvider<T> implements ProviderMethodResolver {
 
     /**
-     * 表值缓存
-     */
-    private static final Map<Class, String> INSERT_VALUE_CACHE = new ConcurrentHashMap<>();
-
-    /**
      * 批量表值缓存
      */
     private static final Map<Class, String> BATCH_INSERT_VALUE_CACHE = new ConcurrentHashMap<>();
 
-    public String insert(T entity) {
-        String values = insertValues(entity, false);
-        return new SQL().INSERT_INTO(tableName(entity)).INTO_COLUMNS(insertColumns(entity)).INTO_VALUES(values).toString();
-    }
-
     public String batchInsert(Map<String, List<T>> map) {
         final List<T> list = map.get(CT.KOT_LIST);
+        final KotMybatisProperties properties = (KotMybatisProperties) map.get(CT.PROPERTIES);
         final T entity = list.get(0);
-        String batchValues = insertValues(entity, true);
-        final SQL sql = new SQL().INSERT_INTO(tableName(entity)).INTO_COLUMNS(insertColumns(entity));
+        String batchValues = insertValues(entity, properties);
+        final SQL sql = new SQL().INSERT_INTO(tableName(entity)).INTO_COLUMNS(insertColumns(entity, properties));
         final StringBuilder valuesBuilder = new StringBuilder();
 
         for (int i = 0; i < list.size(); i++) {
@@ -88,49 +79,42 @@ public class BaseProvider<T> implements ProviderMethodResolver {
     /**
      * 组装插入SQL
      */
-    private static String insertValues(Object entity, boolean batch) {
+    private String insertValues(Object entity, KotMybatisProperties properties) {
         final Class<?> entityClass = entity.getClass();
-        if (batch && BATCH_INSERT_VALUE_CACHE.containsKey(entityClass)) {
+        if (BATCH_INSERT_VALUE_CACHE.containsKey(entityClass)) {
             return BATCH_INSERT_VALUE_CACHE.get(entityClass);
         }
-        if (!batch && INSERT_VALUE_CACHE.containsKey(entityClass)) {
-            return INSERT_VALUE_CACHE.get(entityClass);
-        }
-
         String values;
         StringBuilder valuesBuilder = new StringBuilder();
         try {
             final KotTableInfo.TableInfo tableInfo = KotTableInfo.get(entity);
             final List<KotTableInfo.FieldWrapper> fieldsList = tableInfo.getColumnFields();
             for (KotTableInfo.FieldWrapper fieldWrapper : fieldsList) {
-                if (fieldWrapper.isPk() && fieldWrapper.getField().getAnnotation(ID.class).idType() == ID.IdType.AUTO) {
+                if (fieldWrapper.isPk() && isAuto(fieldWrapper, properties)) {
                     continue;
                 }
-                Field field = fieldWrapper.getField();
-                field.setAccessible(true);
                 valuesBuilder.append("#{");
-                if (batch) {
-                    valuesBuilder.append(CT.KOT_LIST).append("[%d].");
-                }
-                valuesBuilder.append(field.getName()).append("}").append(CT.SPILT);
+                valuesBuilder.append(CT.KOT_LIST).append("[%d].");
+                valuesBuilder.append(fieldWrapper.getFieldName()).append("}").append(CT.SPILT);
             }
             values = KotStringUtils.delLastChat(valuesBuilder).toString();
-            if (batch) {
-                BATCH_INSERT_VALUE_CACHE.put(entityClass, values);
-            } else {
-                INSERT_VALUE_CACHE.put(entityClass, values);
-            }
+            BATCH_INSERT_VALUE_CACHE.put(entityClass, values);
         } catch (Exception e) {
             throw new RuntimeException("", e);
         }
         return values;
     }
 
+    private boolean isAuto(KotTableInfo.FieldWrapper fieldWrapper, KotMybatisProperties properties) {
+        ID.IdType idType = fieldWrapper.getIdType() == ID.IdType.NONE ? properties.getIdType() : fieldWrapper.getIdType();
+        return idType == ID.IdType.NONE || idType == ID.IdType.AUTO;
+    }
+
 
     /**
      * 更新SQL
      */
-    private static String updateSqlBuilder(Object entity, String alias, boolean setNull) {
+    private String updateSqlBuilder(Object entity, String alias, boolean setNull) {
         StringBuilder columnsBuilder = new StringBuilder();
         try {
             final KotTableInfo.TableInfo tableInfo = KotTableInfo.get(entity);
@@ -173,15 +157,13 @@ public class BaseProvider<T> implements ProviderMethodResolver {
     /**
      * 实体获取表名
      */
-    private static String tableName(Object entity) {
+    private String tableName(Object entity) {
         return KotTableInfo.get(entity).getTableName();
     }
 
-    private String insertColumns(T entity) {
+    private String insertColumns(T entity, KotMybatisProperties properties) {
         final KotTableInfo.TableInfo tableInfo = KotTableInfo.get(entity);
-        final Field pkField = tableInfo.getPrimaryKey().getField();
-        final ID idAnno = pkField.getAnnotation(ID.class);
-        return idAnno.idType() == ID.IdType.AUTO ? tableInfo.getNoPkColumns() : tableInfo.getColumns();
+        return isAuto(tableInfo.getPrimaryKey(), properties) ? tableInfo.getNoPkColumns() : tableInfo.getColumns();
     }
 
 

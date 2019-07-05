@@ -31,9 +31,6 @@ public class IdGeneratorBySnowflakeImpl implements IdGenerator {
         return this.nextId();
     }
 
-    public IdGeneratorBySnowflakeImpl() {
-    }
-
     /**
      * 构造
      *

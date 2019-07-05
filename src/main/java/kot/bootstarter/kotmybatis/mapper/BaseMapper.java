@@ -1,6 +1,7 @@
 package kot.bootstarter.kotmybatis.mapper;
 
 import kot.bootstarter.kotmybatis.common.CT;
+import kot.bootstarter.kotmybatis.properties.KotMybatisProperties;
 import org.apache.ibatis.annotations.*;
 
 import java.util.List;
@@ -13,16 +14,10 @@ import java.util.Set;
 public interface BaseMapper<T> {
 
     /**
-     * 插入操作
-     */
-    @InsertProvider(type = BaseProvider.class)
-    int insert(T entity);
-
-    /**
      * 批量插入操作
      */
     @InsertProvider(type = BaseProvider.class)
-    int batchInsert(@Param(CT.KOT_LIST) List<T> list);
+    int batchInsert(@Param(CT.KOT_LIST) List<T> list, @Param(CT.PROPERTIES) KotMybatisProperties properties);
 
     /**
      * 查询操作

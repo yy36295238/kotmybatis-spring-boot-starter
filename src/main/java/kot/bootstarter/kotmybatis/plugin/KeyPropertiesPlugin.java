@@ -3,6 +3,7 @@ package kot.bootstarter.kotmybatis.plugin;
 import kot.bootstarter.kotmybatis.annotation.TableName;
 import kot.bootstarter.kotmybatis.common.CT;
 import kot.bootstarter.kotmybatis.config.KotTableInfo;
+import kot.bootstarter.kotmybatis.properties.KotMybatisProperties;
 import org.apache.ibatis.executor.keygen.Jdbc3KeyGenerator;
 import org.apache.ibatis.executor.statement.StatementHandler;
 import org.apache.ibatis.mapping.SqlCommandType;
@@ -38,26 +39,24 @@ public class KeyPropertiesPlugin implements Interceptor {
             if (sqlCommandType == null || !SqlCommandType.INSERT.name().equals(sqlCommandType.toString())) {
                 return wrap;
             }
-            if (param == null) {
+            if (!(param instanceof Map)) {
                 return wrap;
             }
-            Object enity = param;
-            if (param instanceof Map) {
-                final Map map = (Map) param;
-                if (!map.containsKey(CT.KOT_LIST)) {
-                    return wrap;
-                }
-                List list = (List) map.get(CT.KOT_LIST);
-                enity = list.get(0);
+            final Map map = (Map) param;
+            if (!map.containsKey(CT.KOT_LIST) || !map.containsKey(CT.PROPERTIES)) {
+                return wrap;
             }
-            final TableName tableNameAnno = enity.getClass().getAnnotation(TableName.class);
+            List list = (List) map.get(CT.KOT_LIST);
+            Object entity = list.get(0);
+            final TableName tableNameAnno = entity.getClass().getAnnotation(TableName.class);
             if (tableNameAnno == null) {
                 return wrap;
             }
-            final KotTableInfo.FieldWrapper fieldWrapper = KotTableInfo.get(enity).getPrimaryKey();
+            final KotTableInfo.FieldWrapper fieldWrapper = KotTableInfo.get(entity).getPrimaryKey();
+
             metaObject.setValue("delegate.mappedStatement.keyGenerator", new Jdbc3KeyGenerator());
             final String[] keyProperties = new String[1];
-            keyProperties[0] = fieldWrapper.getFieldName();
+            keyProperties[0] = CT.KOT_LIST + CT.DOT + fieldWrapper.getFieldName();
             final String[] keyColumns = new String[1];
             keyColumns[0] = fieldWrapper.getColumn();
             metaObject.setValue("delegate.mappedStatement.keyProperties", keyProperties);

@@ -2,6 +2,9 @@ package kot.bootstarter.kotmybatis.config;
 
 
 import kot.bootstarter.kotmybatis.common.CT;
+import kot.bootstarter.kotmybatis.common.id.IdGenerator;
+import kot.bootstarter.kotmybatis.common.id.IdGeneratorBySnowflakeImpl;
+import kot.bootstarter.kotmybatis.common.id.IdGeneratorByUUIDImpl;
 import kot.bootstarter.kotmybatis.common.id.IdGeneratorFactory;
 import kot.bootstarter.kotmybatis.plugin.KeyPropertiesPlugin;
 import kot.bootstarter.kotmybatis.plugin.MapResultToCamelPlugin;
@@ -40,6 +43,18 @@ public class KotMybatisAutoConfiguration {
     @ConditionalOnMissingBean(IdGeneratorFactory.class)
     public IdGeneratorFactory idGeneratorFactory() {
         return new IdGeneratorFactory();
+    }
+
+    @Bean("idGeneratorBySnowflake")
+    @ConditionalOnMissingBean(IdGeneratorBySnowflakeImpl.class)
+    public IdGenerator idGeneratorBySnowflake() {
+        return new IdGeneratorBySnowflakeImpl(kotMybatisProperties.getWorkId(), kotMybatisProperties.getDataCenterId());
+    }
+
+    @Bean("idGeneratorByUUID")
+    @ConditionalOnMissingBean(IdGeneratorByUUIDImpl.class)
+    public IdGenerator idGeneratorByUUIDImpl() {
+        return new IdGeneratorByUUIDImpl();
     }
 
     @PostConstruct

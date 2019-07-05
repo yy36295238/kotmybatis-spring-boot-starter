@@ -30,4 +30,6 @@ public @interface Column {
      * 乐观锁
      */
     boolean version() default false;
+
+    String keyWords() default "";
 }

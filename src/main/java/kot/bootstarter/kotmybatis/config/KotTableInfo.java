@@ -80,6 +80,7 @@ public class KotTableInfo {
         private String deleteAnnoVal;
         private Column columnAnno;
         private boolean isPk;
+        private ID.IdType idType;
 
     }
 
@@ -132,12 +133,12 @@ public class KotTableInfo {
                 String column = columnAnno.value();
                 if (id == null) {
                     // 无主键列
-                    noPkColumnBuilder.append(column).append(CT.SPILT);
+                    noPkColumnBuilder.append(columnAnno.keyWords()).append(column).append(columnAnno.keyWords()).append(CT.SPILT);
                 } else {
-                    builder.primaryKey(fieldWrapperBuilder.column(column).isPk(true).build());
+                    builder.primaryKey(fieldWrapperBuilder.column(column).isPk(true).idType(id.idType()).build());
                 }
                 // 全字段列
-                columnBuilder.append(column).append(CT.SPILT);
+                columnBuilder.append(columnAnno.keyWords()).append(column).append(columnAnno.keyWords()).append(CT.SPILT);
                 // 属性和列映射
                 fieldColumnMap.put(field.getName(), column);
                 columnFieldMap.put(column, field.getName());
