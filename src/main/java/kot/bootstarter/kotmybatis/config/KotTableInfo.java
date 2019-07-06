@@ -130,15 +130,16 @@ public class KotTableInfo {
 
             final Column columnAnno = field.getAnnotation(Column.class);
             if (columnAnno != null) {
+                String keyWords = columnAnno.keyWords();
                 String column = columnAnno.value();
                 if (id == null) {
                     // 无主键列
-                    noPkColumnBuilder.append(columnAnno.keyWords()).append(column).append(columnAnno.keyWords()).append(CT.SPILT);
+                    noPkColumnBuilder.append(keyWords).append(column).append(keyWords).append(CT.SPILT);
                 } else {
                     builder.primaryKey(fieldWrapperBuilder.column(column).isPk(true).idType(id.idType()).build());
                 }
                 // 全字段列
-                columnBuilder.append(columnAnno.keyWords()).append(column).append(columnAnno.keyWords()).append(CT.SPILT);
+                columnBuilder.append(keyWords).append(column).append(keyWords).append(CT.SPILT);
                 // 属性和列映射
                 fieldColumnMap.put(field.getName(), column);
                 columnFieldMap.put(column, field.getName());

@@ -31,7 +31,7 @@ public @interface Related {
      * 外键关联表字段
      * user_name
      */
-    String pkColumn() default "";
+    String fkColumn() default "";
 
 
 }

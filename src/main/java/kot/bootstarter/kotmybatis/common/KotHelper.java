@@ -31,7 +31,7 @@ public class KotHelper {
                 continue;
             }
             final Class<?> relatedClazz = related.clazz();
-            final String pkColumn = KotStringUtils.isBlank(related.pkColumn()) ? tableInfo.getPrimaryKey().getColumn() : related.pkColumn();
+            final String pkColumn = KotStringUtils.isBlank(related.fkColumn()) ? tableInfo.getPrimaryKey().getColumn() : related.fkColumn();
 
             // 获取查询数据中关联pk集合
             List relatedVals = list.stream().map(o -> KotBeanUtils.getFieldVal(fieldWrapper.getField(), o)).distinct().collect(toList());
@@ -49,7 +49,7 @@ public class KotHelper {
                 }
                 Map<Object, Map<String, Object>> relatedMap = new HashMap<>();
                 relatedMaps.forEach(m -> {
-                    final Object pkColumnVal = m.containsKey(pkColumn) ? m.get(pkColumn) : m.get(related.pkColumn());
+                    final Object pkColumnVal = m.containsKey(pkColumn) ? m.get(pkColumn) : m.get(related.fkColumn());
                     relatedMap.put(pkColumnVal, m);
                 });
 
