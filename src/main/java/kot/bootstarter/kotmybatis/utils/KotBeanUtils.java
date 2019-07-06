@@ -1,5 +1,6 @@
 package kot.bootstarter.kotmybatis.utils;
 
+import kot.bootstarter.kotmybatis.config.KotTableInfo;
 import org.springframework.util.ReflectionUtils;
 
 import java.lang.annotation.Annotation;
@@ -65,6 +66,15 @@ public class KotBeanUtils {
      * 根据属性获取值
      */
     public static Object getFieldVal(Field field, Object bean) {
+        field.setAccessible(true);
+        return ReflectionUtils.getField(field, bean);
+    }
+
+    /**
+     * 根据属性获取值
+     */
+    public static Object getFieldVal(KotTableInfo.FieldWrapper fieldWrapper, Object bean) {
+        Field field  = fieldWrapper.getField();
         field.setAccessible(true);
         return ReflectionUtils.getField(field, bean);
     }

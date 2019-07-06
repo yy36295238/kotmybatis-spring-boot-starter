@@ -43,7 +43,7 @@ public class KotHelper {
             try {
                 final KotTableInfo.TableInfo relatedTableInfo = KotTableInfo.get(relatedClazz.newInstance());
                 final String relatedTableName = relatedTableInfo.getTableName();
-                final List<Map<String, Object>> relatedMaps = baseMapper.relatedFindAll(relatedTableName, columns, pkColumn, relatedVals);
+                final List<Map<String, Object>> relatedMaps = baseMapper.kotRelatedFindAll(relatedTableName, columns, pkColumn, relatedVals);
                 if (relatedMaps.size() <= 0) {
                     continue;
                 }

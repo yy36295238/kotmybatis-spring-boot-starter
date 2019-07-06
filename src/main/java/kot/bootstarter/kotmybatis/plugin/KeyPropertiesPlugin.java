@@ -1,5 +1,6 @@
 package kot.bootstarter.kotmybatis.plugin;
 
+import kot.bootstarter.kotmybatis.annotation.ID;
 import kot.bootstarter.kotmybatis.annotation.TableName;
 import kot.bootstarter.kotmybatis.common.CT;
 import kot.bootstarter.kotmybatis.config.KotTableInfo;
@@ -52,7 +53,15 @@ public class KeyPropertiesPlugin implements Interceptor {
             if (tableNameAnno == null) {
                 return wrap;
             }
+
+            // 数据库自动生成主键
             final KotTableInfo.FieldWrapper fieldWrapper = KotTableInfo.get(entity).getPrimaryKey();
+            KotMybatisProperties kotMybatisProperties = (KotMybatisProperties) map.get(CT.PROPERTIES);
+
+            ID.IdType idType = fieldWrapper.getIdType() == ID.IdType.NONE ? kotMybatisProperties.getIdType() : fieldWrapper.getIdType();
+            if (idType != ID.IdType.NONE && idType != ID.IdType.AUTO) {
+                return wrap;
+            }
 
             metaObject.setValue("delegate.mappedStatement.keyGenerator", new Jdbc3KeyGenerator());
             final String[] keyProperties = new String[1];

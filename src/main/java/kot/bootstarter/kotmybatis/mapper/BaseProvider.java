@@ -4,6 +4,7 @@ import kot.bootstarter.kotmybatis.annotation.ID;
 import kot.bootstarter.kotmybatis.common.CT;
 import kot.bootstarter.kotmybatis.config.KotTableInfo;
 import kot.bootstarter.kotmybatis.properties.KotMybatisProperties;
+import kot.bootstarter.kotmybatis.utils.KotBeanUtils;
 import kot.bootstarter.kotmybatis.utils.KotStringUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -11,7 +12,6 @@ import org.apache.ibatis.builder.annotation.ProviderMethodResolver;
 import org.apache.ibatis.jdbc.SQL;
 import org.springframework.util.CollectionUtils;
 
-import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -86,22 +86,18 @@ public class BaseProvider<T> implements ProviderMethodResolver {
         }
         String values;
         StringBuilder valuesBuilder = new StringBuilder();
-        try {
-            final KotTableInfo.TableInfo tableInfo = KotTableInfo.get(entity);
-            final List<KotTableInfo.FieldWrapper> fieldsList = tableInfo.getColumnFields();
-            for (KotTableInfo.FieldWrapper fieldWrapper : fieldsList) {
-                if (fieldWrapper.isPk() && isAuto(fieldWrapper, properties)) {
-                    continue;
-                }
-                valuesBuilder.append("#{");
-                valuesBuilder.append(CT.KOT_LIST).append("[%d].");
-                valuesBuilder.append(fieldWrapper.getFieldName()).append("}").append(CT.SPILT);
+        final KotTableInfo.TableInfo tableInfo = KotTableInfo.get(entity);
+        final List<KotTableInfo.FieldWrapper> fieldsList = tableInfo.getColumnFields();
+        for (KotTableInfo.FieldWrapper fieldWrapper : fieldsList) {
+            if (fieldWrapper.isPk() && isAuto(fieldWrapper, properties)) {
+                continue;
             }
-            values = KotStringUtils.delLastChat(valuesBuilder).toString();
-            BATCH_INSERT_VALUE_CACHE.put(entityClass, values);
-        } catch (Exception e) {
-            throw new RuntimeException("", e);
+            valuesBuilder.append("#{");
+            valuesBuilder.append(CT.KOT_LIST).append("[%d].");
+            valuesBuilder.append(fieldWrapper.getFieldName()).append("}").append(CT.SPILT);
         }
+        values = KotStringUtils.delLastChat(valuesBuilder).toString();
+        BATCH_INSERT_VALUE_CACHE.put(entityClass, values);
         return values;
     }
 
@@ -116,24 +112,19 @@ public class BaseProvider<T> implements ProviderMethodResolver {
      */
     private String updateSqlBuilder(Object entity, String alias, boolean setNull) {
         StringBuilder columnsBuilder = new StringBuilder();
-        try {
-            final KotTableInfo.TableInfo tableInfo = KotTableInfo.get(entity);
-            final List<KotTableInfo.FieldWrapper> fieldsList = tableInfo.getColumnFields();
-            for (KotTableInfo.FieldWrapper fieldWrapper : fieldsList) {
-                Field field = fieldWrapper.getField();
-                field.setAccessible(true);
-                Object val = field.get(entity);
-                if ((setNull || val != null) && !field.getName().equals(tableInfo.getPrimaryKey().getColumn())) {
-                    columnsBuilder.append("`").append(fieldWrapper.getColumn()).append("`").append("=");
-                    String aliasField = StringUtils.isBlank(alias) ? field.getName() : alias + CT.DOT + field.getName();
-                    columnsBuilder.append("#{").append(aliasField).append("}").append(CT.SPILT);
-                }
+        final KotTableInfo.TableInfo tableInfo = KotTableInfo.get(entity);
+        final List<KotTableInfo.FieldWrapper> fieldsList = tableInfo.getColumnFields();
+        for (KotTableInfo.FieldWrapper fieldWrapper : fieldsList) {
+            final Object val = KotBeanUtils.getFieldVal(fieldWrapper, entity);
+            if ((setNull || val != null) && !fieldWrapper.getFieldName().equals(tableInfo.getPrimaryKey().getColumn())) {
+                final String keyWords = fieldWrapper.getColumnAnno().keyWords();
+                columnsBuilder.append(keyWords).append(fieldWrapper.getColumn()).append(keyWords).append("=");
+                String aliasField = StringUtils.isBlank(alias) ? fieldWrapper.getFieldName() : alias + CT.DOT + fieldWrapper.getFieldName();
+                columnsBuilder.append("#{").append(aliasField).append("}").append(CT.SPILT);
             }
-            KotStringUtils.delLastChat(columnsBuilder);
-            return columnsBuilder.toString();
-        } catch (Exception e) {
-            throw new RuntimeException("", e);
         }
+        KotStringUtils.delLastChat(columnsBuilder);
+        return columnsBuilder.toString();
     }
 
     /**

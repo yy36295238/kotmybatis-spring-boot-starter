@@ -50,7 +50,7 @@ public class MapResultToCamelPlugin implements Interceptor {
     private boolean isSkip(Invocation invocation) {
         final MetaObject metaObject = SystemMetaObject.forObject(invocation.getTarget());
         final MappedStatement ms = (MappedStatement) metaObject.getValue("mappedStatement");
-        return "com.kot.kotmybatis.biz.mapper.OrderMapper.relatedFindAll".equals(ms.getId());
+        return ms.getId().contains("kotRelatedFindAll");
 
     }
 

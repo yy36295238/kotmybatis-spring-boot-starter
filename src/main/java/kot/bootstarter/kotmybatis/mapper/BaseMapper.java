@@ -23,16 +23,13 @@ public interface BaseMapper<T> {
      * 查询操作
      */
 
-    @Select("SELECT ${columns} FROM ${relatedTableName} WHERE ${pkColumn} = #{pkVal}")
-    Map<String, Object> relatedFindOne(@Param("relatedTableName") String assTableName, @Param("columns") String columns, @Param("pkColumn") String pkColumn, @Param("pkVal") Object pkVal);
-
     @Select("<script>"
             + "SELECT ${columns} FROM ${relatedTableName} WHERE ${pkColumn} IN "
             + "<foreach item='item' index='index' collection='pkVals' open='(' separator=',' close=')'>"
             + "#{item}"
             + "</foreach>"
             + "</script>")
-    List<Map<String, Object>> relatedFindAll(@Param("relatedTableName") String assTableName, @Param("columns") String columns, @Param("pkColumn") String pkColumn, @Param("pkVals") List pkVals);
+    List<Map<String, Object>> kotRelatedFindAll(@Param("relatedTableName") String assTableName, @Param("columns") String columns, @Param("pkColumn") String pkColumn, @Param("pkVals") List pkVals);
 
     @SelectProvider(type = BaseProvider.class)
     List<T> list(@Param(CT.COLUMNS) Set<String> columns, @Param(CT.SQL_CONDITION) String conditionList, @Param(CT.ALIAS_CONDITION) Map<String, Object> conditionMap, @Param(CT.ALIAS_ENTITY) T entity);
