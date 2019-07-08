@@ -15,4 +15,16 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @Documented
 public @interface ID {
     String value();
+
+    IdType idType() default IdType.NONE;
+
+    public enum IdType {
+        /**
+         * 主键生成类型
+         */
+        NONE, AUTO, UUID, SNOW_FLAKE, CUSTOMIZE
+    }
+
+
 }
+

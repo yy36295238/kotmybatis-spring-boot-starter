@@ -27,6 +27,13 @@ public class CT {
     public static final String CLOSE = ")";
     public static final String ORDER_BY = "orderBy";
 
+    public static final String KOT_LIST = "kotList";
+
+    /**
+     * 配置
+     */
+    public static final String PROPERTIES = "properties";
+
 
     public static final String UNDER_SORE_TO_CAMEL = "underSoreToCamel";
 

@@ -1,6 +1,7 @@
 package kot.bootstarter.kotmybatis.service;
 
 
+import com.github.pagehelper.PageInfo;
 import kot.bootstarter.kotmybatis.common.Page;
 
 import java.util.List;
@@ -36,7 +37,7 @@ public interface MapperService<T> extends BaseMapperManager<T> {
     /**
      * 分页查询
      */
-    Page<T> selectPage(Page<T> page, T entity);
+    PageInfo<T> selectPage(Page<T> page, T entity);
 
     /**
      * 删除操作

@@ -112,4 +112,9 @@ public class KotStringUtils extends StringUtils {
         return obj != null && isNotBlank(obj.toString());
     }
 
+
+    public static boolean isEmpty(Object obj) {
+        return obj == null || isBlank(obj.toString());
+    }
+
 }

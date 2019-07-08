@@ -1,7 +1,7 @@
 package kot.bootstarter.kotmybatis.mapper;
 
 import kot.bootstarter.kotmybatis.common.CT;
-import kot.bootstarter.kotmybatis.common.Page;
+import kot.bootstarter.kotmybatis.properties.KotMybatisProperties;
 import org.apache.ibatis.annotations.*;
 
 import java.util.List;
@@ -14,23 +14,22 @@ import java.util.Set;
 public interface BaseMapper<T> {
 
     /**
-     * 插入操作
-     */
-    @InsertProvider(type = BaseProvider.class)
-    @Options(useGeneratedKeys = true, keyColumn = "id", keyProperty = "id")
-    int insert(T entity);
-
-    /**
      * 批量插入操作
      */
     @InsertProvider(type = BaseProvider.class)
-    int batchInsert(@Param("list") List<T> list);
+    int batchInsert(@Param(CT.KOT_LIST) List<T> list, @Param(CT.PROPERTIES) KotMybatisProperties properties);
 
     /**
      * 查询操作
      */
-    @SelectProvider(type = BaseProvider.class)
-    T findOne(@Param(CT.COLUMNS) Set<String> columns, @Param(CT.SQL_CONDITION) String conditionList, @Param(CT.ALIAS_CONDITION) Map<String, Object> conditionMap, @Param(CT.ALIAS_ENTITY) T entity);
+
+    @Select("<script>"
+            + "SELECT ${columns} FROM ${relatedTableName} WHERE ${pkColumn} IN "
+            + "<foreach item='item' index='index' collection='pkVals' open='(' separator=',' close=')'>"
+            + "#{item}"
+            + "</foreach>"
+            + "</script>")
+    List<Map<String, Object>> kotRelatedFindAll(@Param("relatedTableName") String assTableName, @Param("columns") String columns, @Param("pkColumn") String pkColumn, @Param("pkVals") List pkVals);
 
     @SelectProvider(type = BaseProvider.class)
     List<T> list(@Param(CT.COLUMNS) Set<String> columns, @Param(CT.SQL_CONDITION) String conditionList, @Param(CT.ALIAS_CONDITION) Map<String, Object> conditionMap, @Param(CT.ALIAS_ENTITY) T entity);
@@ -38,8 +37,6 @@ public interface BaseMapper<T> {
     @SelectProvider(type = BaseProvider.class)
     int count(@Param(CT.SQL_CONDITION) String conditionList, @Param(CT.ALIAS_CONDITION) Map<String, Object> conditionMap, @Param(CT.ALIAS_ENTITY) T entity);
 
-    @SelectProvider(type = BaseProvider.class)
-    List<T> selectPage(@Param(CT.COLUMNS) Set<String> columns, @Param(CT.SQL_CONDITION) String conditionList, @Param("page") Page page, @Param(CT.ALIAS_CONDITION) Map<String, Object> conditionMap, @Param(CT.ALIAS_ENTITY) T entity);
 
     @DeleteProvider(type = BaseProvider.class)
     int delete(@Param(CT.SQL_CONDITION) String conditionList, @Param(CT.ALIAS_CONDITION) Map<String, Object> conditionMap, @Param(CT.ALIAS_ENTITY) T entity);

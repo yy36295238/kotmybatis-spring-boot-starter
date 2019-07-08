@@ -3,7 +3,10 @@ package kot.bootstarter.kotmybatis.plugin;
 import kot.bootstarter.kotmybatis.common.CT;
 import kot.bootstarter.kotmybatis.utils.MapUtils;
 import org.apache.ibatis.executor.resultset.ResultSetHandler;
+import org.apache.ibatis.mapping.MappedStatement;
 import org.apache.ibatis.plugin.*;
+import org.apache.ibatis.reflection.MetaObject;
+import org.apache.ibatis.reflection.SystemMetaObject;
 
 import java.util.Properties;
 
@@ -14,14 +17,23 @@ import java.util.Properties;
 @Intercepts({@Signature(type = ResultSetHandler.class, method = "handleResultSets", args = java.sql.Statement.class)})
 public class MapResultToCamelPlugin implements Interceptor {
 
-    private boolean underSoreToCamel;
+    private boolean underSoreToCamel = true;
+
+    public MapResultToCamelPlugin() {
+    }
+
+    public MapResultToCamelPlugin(Properties properties) {
+        this.setProperties(properties);
+    }
 
     @Override
     public Object intercept(Invocation invocation) throws Throwable {
-        if (!underSoreToCamel) {
-            return invocation.proceed();
+
+        if (underSoreToCamel && !isSkip(invocation)) {
+            return MapUtils.toCamel(invocation.proceed());
         }
-        return MapUtils.toCamel(invocation.proceed());
+        return invocation.proceed();
+
     }
 
     @Override
@@ -32,6 +44,13 @@ public class MapResultToCamelPlugin implements Interceptor {
     @Override
     public void setProperties(Properties properties) {
         underSoreToCamel = Boolean.parseBoolean(properties.getProperty(CT.UNDER_SORE_TO_CAMEL));
+
+    }
+
+    private boolean isSkip(Invocation invocation) {
+        final MetaObject metaObject = SystemMetaObject.forObject(invocation.getTarget());
+        final MappedStatement ms = (MappedStatement) metaObject.getValue("mappedStatement");
+        return ms.getId().contains("kotRelatedFindAll");
 
     }
 
