@@ -10,12 +10,15 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.util.Assert;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+
+import static kot.bootstarter.kotmybatis.utils.KotStringUtils.classKeyWords;
 
 /**
  * @author YangYu
@@ -63,6 +66,10 @@ public class KotTableInfo {
         private Map<String, String> fieldColumnMap;
         private Map<String, String> columnFieldMap;
         private Map<String, FieldWrapper> fieldWrapperMap;
+        /**
+         * 关键字集合
+         */
+        private Map<String, String> kewWordsMap;
     }
 
     /**
@@ -111,6 +118,7 @@ public class KotTableInfo {
         Map<String, String> fieldColumnMap = new HashMap<>();
         Map<String, String> columnFieldMap = new HashMap<>();
         Map<String, FieldWrapper> fieldWrapperMap = new HashMap<>();
+        Map<String, String> keyWordsMap = new HashMap<>();
         StringBuilder columnBuilder = new StringBuilder();
         StringBuilder noPkColumnBuilder = new StringBuilder();
         final Field[] declaredFields = entityClass.getDeclaredFields();
@@ -132,6 +140,10 @@ public class KotTableInfo {
             if (columnAnno != null) {
                 String keyWords = columnAnno.keyWords();
                 String column = columnAnno.value();
+                // 设置关键词
+                if (StringUtils.isNotBlank(keyWords)) {
+                    keyWordsMap.put(classKeyWords(entityClass, column), keyWords);
+                }
                 if (id == null) {
                     // 无主键列
                     noPkColumnBuilder.append(keyWords).append(column).append(keyWords).append(CT.SPILT);
@@ -166,7 +178,7 @@ public class KotTableInfo {
 
         return builder.tableName(tableNameAnnotation.value()).columns(columnBuilder.toString()).noPkColumns(noPkColumnBuilder.toString())
                 .fieldColumnMap(fieldColumnMap).columnFieldMap(columnFieldMap).columnFields(columnFields)
-                .fieldWrapperMap(fieldWrapperMap)
+                .fieldWrapperMap(fieldWrapperMap).kewWordsMap(keyWordsMap)
                 .build();
 
     }

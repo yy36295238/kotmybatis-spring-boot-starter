@@ -14,7 +14,11 @@ import java.util.*;
 
 import static java.util.stream.Collectors.toSet;
 import static kot.bootstarter.kotmybatis.service.impl.BaseMapperService.MethodEnum.*;
+import static kot.bootstarter.kotmybatis.utils.KotStringUtils.classKeyWords;
 
+/**
+ * @author YangYu
+ */
 public class BaseMapperService<T> {
 
     BaseMapper<T> baseMapper;
@@ -72,7 +76,7 @@ public class BaseMapperService<T> {
     Map<String, Object> nullMap = null;
     Map<String, Object> conditionMap = new HashMap<>();
     String conditionSql = "";
-    StringBuilder sqlBuilder = new StringBuilder();
+    private StringBuilder sqlBuilder = new StringBuilder();
 
     /**
      * 实体条件，注解处理
@@ -143,7 +147,7 @@ public class BaseMapperService<T> {
 
         if (this.entity != null) {
             // 表信息
-            this.fieldColumnMap = KotTableInfo.get(this.entity).getFieldColumnMap();
+            this.fieldColumnMap = tableInfo().getFieldColumnMap();
             // 实体条件
             this.entityCondition();
         }
@@ -200,7 +204,7 @@ public class BaseMapperService<T> {
             if (fieldColumnMap.containsKey(k)) {
                 k = fieldColumnMap.get(k);
             }
-            sqlBuilder(sqlBuilder, conditionEnum, k, v);
+            sqlBuilder(conditionEnum, k, v);
             conditionMap.put(newKey(conditionEnum, k), v);
         });
     }
@@ -209,13 +213,12 @@ public class BaseMapperService<T> {
     /**
      * 构建SQL语句
      */
-    private void sqlBuilder(StringBuilder sqlBuilder, ConditionEnum conditionEnum, String k, Object v) {
-        if (conditionEnum == ConditionEnum.OR) {
-            sqlBuilder.append(CT.OR);
-        } else {
-            sqlBuilder.append(CT.AND);
-        }
-        sqlBuilder.append(k).append(conditionEnum.oper);
+    private void sqlBuilder(ConditionEnum conditionEnum, String k, Object v) {
+        // AND OR 处理
+        doAndOr(conditionEnum);
+        // 关键词处理
+        doKeyWords(k);
+        sqlBuilder.append(conditionEnum.oper);
         k = newKey(conditionEnum, k);
         // in 查询拼接SQL语法
         if (conditionEnum == ConditionEnum.IN || conditionEnum == ConditionEnum.NIN) {
@@ -238,6 +241,34 @@ public class BaseMapperService<T> {
         }
     }
 
+    /**
+     * AND OR 处理
+     */
+    private void doAndOr(ConditionEnum conditionEnum) {
+        if (conditionEnum == ConditionEnum.OR) {
+            sqlBuilder.append(CT.OR);
+        } else {
+            sqlBuilder.append(CT.AND);
+        }
+    }
+
+    /**
+     * 关键词处理
+     */
+    private void doKeyWords(String k) {
+        final Map<String, String> kewWordsMap = tableInfo().getKewWordsMap();
+        final String words = classKeyWords(entity.getClass(), k);
+        if (kewWordsMap.containsKey(words)) {
+            final String keyWords = kewWordsMap.get(words);
+            sqlBuilder.append(keyWords).append(k).append(keyWords);
+        } else {
+            sqlBuilder.append(k);
+        }
+    }
+
+    /**
+     * 处理排序
+     */
     private void orderByBuilder() {
         if (this.orderByIdAsc) {
             conditionMap.put("orderBy", tableInfo.getPrimaryKey().getColumn() + " ASC ");
@@ -258,7 +289,7 @@ public class BaseMapperService<T> {
         if (CollectionUtils.isEmpty(columns)) {
             return null;
         }
-        final Map<String, String> fieldColumnMap = KotTableInfo.get(this.entity).getFieldColumnMap();
+        final Map<String, String> fieldColumnMap = tableInfo().getFieldColumnMap();
         return columns.stream().map(c -> fieldColumnMap.getOrDefault(c, c)).collect(toSet());
     }
 
@@ -290,7 +321,11 @@ public class BaseMapperService<T> {
     }
 
 
-    protected Map<String, Object> map(Map<String, Object> conditionMap) {
+    Map<String, Object> map(Map<String, Object> conditionMap) {
         return (conditionMap == null ? new HashMap<>() : conditionMap);
+    }
+
+    private KotTableInfo.TableInfo tableInfo() {
+        return this.tableInfo == null ? KotTableInfo.get(this.entity) : this.tableInfo;
     }
 }

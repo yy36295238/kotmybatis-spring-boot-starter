@@ -117,4 +117,8 @@ public class KotStringUtils extends StringUtils {
         return obj == null || isBlank(obj.toString());
     }
 
+    public static String classKeyWords(Class<?> clazz, String column) {
+        return clazz.getName() + CT.DOT + column;
+    }
+
 }

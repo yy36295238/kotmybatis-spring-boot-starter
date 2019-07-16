@@ -430,7 +430,7 @@ public class MapperServiceImpl<T> extends BaseMapperService<T> implements Mapper
     /**
      * 执行调用
      */
-    protected Object execute() {
+    private Object execute() {
 
         if (this.entity != null) {
             tableInfo = KotTableInfo.get(this.entity);
@@ -439,16 +439,16 @@ public class MapperServiceImpl<T> extends BaseMapperService<T> implements Mapper
         // 全局注解处理器
         super.handleGlobalAnnotation();
 
-        conditionSql = KotStringUtils.isBlank(conditionSql) ? conditionSql() : conditionSql;
+        conditionSql = KotStringUtils.isBlank(conditionSql) ? super.conditionSql() : conditionSql;
         switch (this.methodEnum) {
             case BATCH_INSERT:
                 return baseMapper.batchInsert(this.batchList, this.properties);
             case LIST:
-                return baseMapper.list(columnsBuilder(), conditionSql, conditionMap, this.entity);
+                return baseMapper.list(super.columnsBuilder(), conditionSql, conditionMap, this.entity);
             case COUNT:
                 return baseMapper.count(conditionSql, conditionMap, this.entity);
             case UPDATE:
-                return baseMapper.update(columnsBuilder(), conditionSql, conditionMap, this.entity, this.setEntity, this.setNull);
+                return baseMapper.update(super.columnsBuilder(), conditionSql, conditionMap, this.entity, this.setEntity, this.setNull);
             case DELETE:
                 return baseMapper.delete(conditionSql, conditionMap, entity);
             default:
