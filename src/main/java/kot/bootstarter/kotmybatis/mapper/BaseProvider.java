@@ -69,7 +69,11 @@ public class BaseProvider<T> implements ProviderMethodResolver {
         final T setEntity = (T) map.get(CT.SET_ENTITY);
         final boolean setNull = (boolean) map.get("setNull");
         final String conditionSql = (String) map.get(CT.SQL_CONDITION);
-        return new SQL().UPDATE(tableName(setEntity)).SET(updateSqlBuilder(setEntity, CT.SET_ENTITY, setNull)).WHERE(conditionSql).toString();
+        SQL sql = new SQL().UPDATE(tableName(setEntity)).SET(updateSqlBuilder(setEntity, CT.SET_ENTITY, setNull));
+        if (KotStringUtils.isNoneBlank(conditionSql)) {
+            sql.WHERE(conditionSql);
+        }
+        return sql.toString();
     }
 
     /*
