@@ -3,7 +3,6 @@ package kot.bootstarter.kotmybatis.utils;
 import kot.bootstarter.kotmybatis.config.KotTableInfo;
 import org.springframework.util.ReflectionUtils;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Type;
 
