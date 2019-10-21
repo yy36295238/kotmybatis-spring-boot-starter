@@ -14,6 +14,12 @@ import java.util.Set;
 public interface BaseMapper<T> {
 
     /**
+     * 插入操作
+     */
+    @InsertProvider(type = BaseProvider.class)
+    int insert(@Param(CT.ALIAS_ENTITY) T entity, @Param(CT.PROPERTIES) KotMybatisProperties properties);
+
+    /**
      * 批量插入操作
      */
     @InsertProvider(type = BaseProvider.class)

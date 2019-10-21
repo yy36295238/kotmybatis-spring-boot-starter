@@ -28,6 +28,26 @@ public class BaseProvider<T> implements ProviderMethodResolver {
      */
     private static final Map<Class, String> BATCH_INSERT_VALUE_CACHE = new ConcurrentHashMap<>();
 
+    public String insert(Map<String, List<T>> map) {
+        final T entity = (T) map.get(CT.ALIAS_ENTITY);
+
+        StringBuilder columnsBuilder = new StringBuilder();
+        StringBuilder valBuilder = new StringBuilder();
+        final KotTableInfo.TableInfo tableInfo = KotTableInfo.get(entity);
+        final List<KotTableInfo.FieldWrapper> fieldsList = tableInfo.getColumnFields();
+        for (KotTableInfo.FieldWrapper fieldWrapper : fieldsList) {
+            final Object val = KotBeanUtils.getFieldVal(fieldWrapper, entity);
+            if (val != null) {
+                final String keyWords = fieldWrapper.getColumnAnno().keyWords();
+                columnsBuilder.append(keyWords).append(fieldWrapper.getColumn()).append(keyWords).append(CT.SPILT);
+                valBuilder.append("#{").append(CT.ALIAS_ENTITY).append(CT.DOT).append(fieldWrapper.getFieldName()).append("}").append(CT.SPILT);
+            }
+        }
+        KotStringUtils.delLastChat(columnsBuilder);
+        KotStringUtils.delLastChat(valBuilder);
+        return new SQL().INSERT_INTO(tableName(entity)).VALUES(columnsBuilder.toString(), valBuilder.toString()).toString();
+    }
+
     public String batchInsert(Map<String, List<T>> map) {
         final List<T> list = map.get(CT.KOT_LIST);
         final KotMybatisProperties properties = (KotMybatisProperties) map.get(CT.PROPERTIES);

@@ -44,11 +44,11 @@ public class KeyPropertiesPlugin implements Interceptor {
                 return wrap;
             }
             final Map map = (Map) param;
-            if (!map.containsKey(CT.KOT_LIST) || !map.containsKey(CT.PROPERTIES)) {
+            if ((!map.containsKey(CT.ALIAS_ENTITY) && !map.containsKey(CT.KOT_LIST)) || !map.containsKey(CT.PROPERTIES)) {
                 return wrap;
             }
-            List list = (List) map.get(CT.KOT_LIST);
-            Object entity = list.get(0);
+            boolean isBatchInsert = map.containsKey(CT.KOT_LIST);
+            Object entity = isBatchInsert ? ((List) map.get(CT.KOT_LIST)).get(0) : map.get(CT.ALIAS_ENTITY);
             final TableName tableNameAnno = entity.getClass().getAnnotation(TableName.class);
             if (tableNameAnno == null) {
                 return wrap;
@@ -65,7 +65,7 @@ public class KeyPropertiesPlugin implements Interceptor {
 
             metaObject.setValue("delegate.mappedStatement.keyGenerator", new Jdbc3KeyGenerator());
             final String[] keyProperties = new String[1];
-            keyProperties[0] = CT.KOT_LIST + CT.DOT + fieldWrapper.getFieldName();
+            keyProperties[0] = (isBatchInsert ? CT.KOT_LIST : CT.ALIAS_ENTITY) + CT.DOT + fieldWrapper.getFieldName();
             final String[] keyColumns = new String[1];
             keyColumns[0] = fieldWrapper.getColumn();
             metaObject.setValue("delegate.mappedStatement.keyProperties", keyProperties);

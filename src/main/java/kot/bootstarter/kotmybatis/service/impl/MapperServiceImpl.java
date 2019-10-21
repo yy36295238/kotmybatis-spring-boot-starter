@@ -47,9 +47,16 @@ public class MapperServiceImpl<T> extends BaseMapperService<T> implements Mapper
     @Override
     public int insert(T entity) {
         Assert.notNull(entity, "插入数据实体对象不能为空");
-        List<T> batchList = new ArrayList<>();
-        batchList.add(entity);
-        return this.batchInsert(batchList);
+        this.methodEnum = INSERT;
+        this.entity = entity;
+
+        final KotTableInfo.FieldWrapper fieldWrapper = KotTableInfo.get(entity).getPrimaryKey();
+        ID.IdType idType = fieldWrapper.getIdType() == ID.IdType.NONE ? properties.getIdType() : fieldWrapper.getIdType();
+        final IdGenerator idGenerator = idGeneratorFactory.get(idType);
+        if (idGenerator != null) {
+            KotBeanUtils.setField(fieldWrapper.getField(), entity, idGenerator.gen());
+        }
+        return (int) execute();
     }
 
     @Override
@@ -441,16 +448,18 @@ public class MapperServiceImpl<T> extends BaseMapperService<T> implements Mapper
 
         conditionSql = KotStringUtils.isBlank(conditionSql) ? super.conditionSql() : conditionSql;
         switch (this.methodEnum) {
+            case INSERT:
+                return baseMapper.insert(this.entity, this.properties);
             case BATCH_INSERT:
                 return baseMapper.batchInsert(this.batchList, this.properties);
             case LIST:
                 return baseMapper.list(super.columnsBuilder(), conditionSql, conditionMap, this.entity);
             case COUNT:
-                return baseMapper.count(conditionSql, conditionMap, this.entity);
+                return baseMapper.count(this.conditionSql, this.conditionMap, this.entity);
             case UPDATE:
                 return baseMapper.update(super.columnsBuilder(), conditionSql, conditionMap, this.entity, this.setEntity, this.setNull);
             case DELETE:
-                return baseMapper.delete(conditionSql, conditionMap, entity);
+                return baseMapper.delete(this.conditionSql, this.conditionMap, this.entity);
             default:
                 throw new KotException("not find method: " + this.methodEnum);
         }

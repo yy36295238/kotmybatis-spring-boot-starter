@@ -297,7 +297,7 @@ public class BaseMapperService<T> {
         /**
          * 调用函数
          */
-        BATCH_INSERT, LIST, COUNT, UPDATE, DELETE
+        INSERT, BATCH_INSERT, LIST, COUNT, UPDATE, DELETE
     }
 
     /**
