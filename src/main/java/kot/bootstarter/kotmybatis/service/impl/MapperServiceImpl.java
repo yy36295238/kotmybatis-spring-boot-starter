@@ -4,7 +4,6 @@ import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import kot.bootstarter.kotmybatis.annotation.ID;
 import kot.bootstarter.kotmybatis.common.CT;
-import kot.bootstarter.kotmybatis.common.KotHelper;
 import kot.bootstarter.kotmybatis.common.Page;
 import kot.bootstarter.kotmybatis.common.id.IdGenerator;
 import kot.bootstarter.kotmybatis.common.id.IdGeneratorFactory;
@@ -99,10 +98,8 @@ public class MapperServiceImpl<T> extends BaseMapperService<T> implements Mapper
         if (list.size() <= 0) {
             return list;
         }
-        // 关联字段查询
-        if (this.activeRelated) {
-            KotHelper.relatedHelp(entity, list, baseMapper);
-        }
+        super.related(list);
+
         return list;
     }
 
@@ -206,6 +203,14 @@ public class MapperServiceImpl<T> extends BaseMapperService<T> implements Mapper
             }
         }
         return existMap;
+    }
+
+    @Override
+    public boolean exist(T entity) {
+        final KotTableInfo.FieldWrapper primaryKey = KotTableInfo.get(entity).getPrimaryKey();
+        this.fields(primaryKey.getColumn());
+        final T one = this.findOne(entity);
+        return one != null;
     }
 
     /**
@@ -423,16 +428,21 @@ public class MapperServiceImpl<T> extends BaseMapperService<T> implements Mapper
 
     @Override
     public MapperService<T> activeLike() {
-        this.activeLike = true;
+        super.activeLike = true;
         return this;
     }
 
     @Override
     public MapperService<T> activeRelated() {
-        this.activeRelated = true;
+        super.activeRelated = true;
         return this;
     }
 
+    @Override
+    public MapperService<T> activeUnion() {
+        super.activeUnion = true;
+        return this;
+    }
 
     /**
      * 执行调用

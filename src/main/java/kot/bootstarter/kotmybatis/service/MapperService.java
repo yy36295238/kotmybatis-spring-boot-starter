@@ -71,4 +71,9 @@ public interface MapperService<T> extends BaseMapperManager<T> {
      */
     Map<String, Object> columnExist(T entity);
 
+    /**
+     * 判断是否存在
+     */
+    boolean exist(T entity);
+
 }

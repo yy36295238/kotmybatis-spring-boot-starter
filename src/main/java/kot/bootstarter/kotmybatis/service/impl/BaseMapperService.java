@@ -1,6 +1,7 @@
 package kot.bootstarter.kotmybatis.service.impl;
 
 import kot.bootstarter.kotmybatis.common.CT;
+import kot.bootstarter.kotmybatis.common.KotHelper;
 import kot.bootstarter.kotmybatis.common.id.IdGeneratorFactory;
 import kot.bootstarter.kotmybatis.config.KotTableInfo;
 import kot.bootstarter.kotmybatis.enums.ConditionEnum;
@@ -46,6 +47,10 @@ public class BaseMapperService<T> {
      */
     boolean activeRelated;
     /**
+     * 开启关联对象查询
+     */
+    boolean activeUnion;
+    /**
      * 按主键排序
      */
     boolean orderByIdAsc;
@@ -55,7 +60,6 @@ public class BaseMapperService<T> {
      * 开启实体条件
      */
     boolean activeEntityCondition = true;
-
 
     /**
      * ======================
@@ -310,8 +314,27 @@ public class BaseMapperService<T> {
     /**
      * 重置查询条件
      */
-    void resetCondition() {
+    public void resetCondition() {
         this.eqMap = null;
+        this.conditionSql = "";
+        this.sqlBuilder = new StringBuilder();
+    }
+
+    /**
+     * 重置查询条件
+     */
+    public void resetAllCondition() {
+        this.eqMap = null;
+        this.neqMap = null;
+        this.inMap = null;
+        this.ninMap = null;
+        this.ltMap = null;
+        this.gtMap = null;
+        this.lteMap = null;
+        this.gteMap = null;
+        this.orMap = null;
+        this.likeMap = null;
+        this.nullMap = null;
         this.conditionSql = "";
         this.sqlBuilder = new StringBuilder();
     }
@@ -328,4 +351,16 @@ public class BaseMapperService<T> {
     private KotTableInfo.TableInfo tableInfo() {
         return this.tableInfo == null ? KotTableInfo.get(this.entity) : this.tableInfo;
     }
+
+    void related(List<T> list) {
+        // 关联字段查询
+        if (this.activeRelated) {
+            KotHelper.relatedHelp(entity, list, baseMapper);
+        }
+        // 关联子表查询
+        if (this.activeUnion) {
+            KotHelper.unionItemHelp(entity, list, baseMapper);
+        }
+    }
+
 }

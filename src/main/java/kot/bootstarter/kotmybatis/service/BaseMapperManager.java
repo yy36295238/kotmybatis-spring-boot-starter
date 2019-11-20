@@ -90,4 +90,6 @@ public interface BaseMapperManager<T> {
     MapperService<T> activeLike();
 
     MapperService<T> activeRelated();
+
+    MapperService<T> activeUnion();
 }

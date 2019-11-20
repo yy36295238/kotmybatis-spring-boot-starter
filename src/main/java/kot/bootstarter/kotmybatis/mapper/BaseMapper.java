@@ -37,6 +37,9 @@ public interface BaseMapper<T> {
             + "</script>")
     List<Map<String, Object>> kotRelatedFindAll(@Param("relatedTableName") String assTableName, @Param("columns") String columns, @Param("pkColumn") String pkColumn, @Param("pkVals") List pkVals);
 
+    @Select("SELECT * FROM ${tableName} WHERE ${pkColumn} = #{pkVal}")
+    List<Map<String, Object>> kotUnionFindAll(@Param("tableName") String tableName, @Param("pkColumn") String pkColumn, @Param("pkVal") Object pkVal);
+
     @SelectProvider(type = BaseProvider.class)
     List<T> list(@Param(CT.COLUMNS) Set<String> columns, @Param(CT.SQL_CONDITION) String conditionList, @Param(CT.ALIAS_CONDITION) Map<String, Object> conditionMap, @Param(CT.ALIAS_ENTITY) T entity);
 
