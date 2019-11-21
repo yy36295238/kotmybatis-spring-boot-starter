@@ -6,7 +6,6 @@ import kot.bootstarter.kotmybatis.config.KotTableInfo;
 import kot.bootstarter.kotmybatis.exception.KotException;
 import kot.bootstarter.kotmybatis.mapper.BaseMapper;
 import kot.bootstarter.kotmybatis.utils.KotBeanUtils;
-import org.apache.commons.beanutils.BeanUtils;
 import org.springframework.util.CollectionUtils;
 
 import java.util.HashMap;
@@ -16,6 +15,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
+import static kot.bootstarter.kotmybatis.utils.MapUtils.mapToBean;
+import static kot.bootstarter.kotmybatis.utils.MapUtils.mapsToBeans;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
 public class KotHelper {
@@ -110,11 +111,11 @@ public class KotHelper {
                     KotBeanUtils.setField(itemTableInfo.getPrimaryKey(), itemEntity, fkVal);
                     // 属性类型赋值
                     if (fieldWrapper.getField().getType().toString().contains("java.util.List")) {
-                        KotBeanUtils.setField(fieldWrapper, oriEntity, toBeanList(baseMapper.kotUnionFindAll(itemTableInfo.getTableName(), itemTableInfo.getPrimaryKey().getColumn(), fkVal), itemEntity));
+                        KotBeanUtils.setField(fieldWrapper, oriEntity, mapsToBeans(itemEntity, baseMapper.kotUnionFindAll(itemTableInfo.getTableName(), itemTableInfo.getPrimaryKey().getColumn(), fkVal)));
                     } else if (fieldWrapper.getField().getType().equals(itemEntity.getClass())) {
                         final List<Map<String, Object>> items = baseMapper.kotUnionFindAll(itemTableInfo.getTableName(), itemTableInfo.getPrimaryKey().getColumn(), fkVal);
                         Map<String, Object> map = items.size() == 0 ? null : items.get(0);
-                        KotBeanUtils.setField(fieldWrapper, oriEntity, toBean(itemEntity, map));
+                        KotBeanUtils.setField(fieldWrapper, oriEntity, mapToBean(itemEntity, map));
                     } else {
                         throw new KotException("关联对象不匹配：" + "@UnionItem.clazz=" + fieldWrapper.getField().getType().toString() + "<==>" + itemEntity.getClass().toString());
                     }
@@ -128,22 +129,5 @@ public class KotHelper {
 
     }
 
-    private static Object toBean(Object bean, Map<String, Object> map) {
-        if (map == null) {
-            return null;
-        }
-        try {
-            BeanUtils.populate(bean, map);
-        } catch (Exception e) {
-            throw new KotException("Map转成Bean错误", e);
-        }
-        return bean;
-    }
 
-    private static List toBeanList(List<Map<String, Object>> maps, Object bean) {
-        if (CollectionUtils.isEmpty(maps)) {
-            return maps;
-        }
-        return maps.stream().map(m -> toBean(bean, m)).collect(toList());
-    }
 }

@@ -78,6 +78,7 @@ public class BaseMapperService<T> {
     Map<String, Object> orMap = null;
     Map<String, Object> likeMap = null;
     Map<String, Object> nullMap = null;
+    Map<String, Object> notNullMap = null;
     Map<String, Object> conditionMap = new HashMap<>();
     String conditionSql = "";
     private StringBuilder sqlBuilder = new StringBuilder();
@@ -187,6 +188,9 @@ public class BaseMapperService<T> {
         if (nullMap != null) {
             conditionMapBuilder(ConditionEnum.NULL, nullMap);
         }
+        if (notNullMap != null) {
+            conditionMapBuilder(ConditionEnum.NOT_NULL, notNullMap);
+        }
         // 放在最后，否则拼接sql会有问题
         if (orMap != null) {
             conditionMapBuilder(ConditionEnum.OR, orMap);
@@ -237,7 +241,7 @@ public class BaseMapperService<T> {
         } else if (conditionEnum == ConditionEnum.LIKE) {
             // like 查询拼接SQL语法
             sqlBuilder.append("CONCAT").append("('%',").append("#{").append(CT.ALIAS_CONDITION).append(CT.DOT).append(k).append("},").append("'%')");
-        } else if (conditionEnum == ConditionEnum.NULL) {
+        } else if (Arrays.asList(ConditionEnum.NULL, ConditionEnum.NOT_NULL).contains(conditionEnum)) {
             // nothing
         } else {
             // 默认查询拼接SQL语法
@@ -352,7 +356,7 @@ public class BaseMapperService<T> {
         return this.tableInfo == null ? KotTableInfo.get(this.entity) : this.tableInfo;
     }
 
-    void related(List<T> list) {
+    void annoExtend(List<T> list) {
         // 关联字段查询
         if (this.activeRelated) {
             KotHelper.relatedHelp(entity, list, baseMapper);

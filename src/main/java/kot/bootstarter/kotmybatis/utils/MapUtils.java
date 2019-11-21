@@ -1,5 +1,7 @@
 package kot.bootstarter.kotmybatis.utils;
 
+import kot.bootstarter.kotmybatis.exception.KotException;
+import org.apache.commons.beanutils.BeanUtils;
 import org.springframework.util.CollectionUtils;
 
 import java.util.ArrayList;
@@ -7,17 +9,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static java.util.stream.Collectors.toList;
+
 /**
  * @author YangYu
  */
 public class MapUtils {
 
-    public static void aliasKey(Map<String, Object> map, String format) {
-        Map<String, Object> newMap = new HashMap<>();
-        map.keySet().forEach(k -> newMap.put(String.format(format, k), map.get(k)));
-        map.putAll(newMap);
-
-    }
 
     public static boolean isMap(Object obj) {
         return obj != null && obj instanceof Map;
@@ -58,7 +56,6 @@ public class MapUtils {
         Map<String, Object> retMap = new HashMap<>();
         map.forEach((k, v) -> retMap.put(KotStringUtils.underline2Camel(k), v));
         return retMap;
-
     }
 
     /**
@@ -72,5 +69,27 @@ public class MapUtils {
         list.forEach(m -> maps.add(toCamel(m)));
         return maps;
 
+    }
+
+    /**
+     * Map 转成 Bean, 下划线转驼峰
+     */
+    public static Object mapToBean(Object bean, Map<String, Object> map) {
+        if (map == null) {
+            return null;
+        }
+        try {
+            BeanUtils.populate(bean, toCamel(map));
+        } catch (Exception e) {
+            throw new KotException("Map转成Bean错误", e);
+        }
+        return bean;
+    }
+
+    public static List mapsToBeans(Object bean, List<Map<String, Object>> maps) {
+        if (CollectionUtils.isEmpty(maps)) {
+            return maps;
+        }
+        return maps.stream().map(m -> mapToBean(bean, m)).collect(toList());
     }
 }

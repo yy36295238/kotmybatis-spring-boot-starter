@@ -16,7 +16,8 @@ public enum ConditionEnum {
     NIN(" NOT IN "),
     OR(" = "),
     LIKE(" LIKE "),
-    NULL(" IS NULL ");
+    NULL(" IS NULL "),
+    NOT_NULL(" IS NOT NULL ");
 
     public String oper;
 

@@ -98,7 +98,9 @@ public class MapperServiceImpl<T> extends BaseMapperService<T> implements Mapper
         if (list.size() <= 0) {
             return list;
         }
-        super.related(list);
+
+        // 扩展操作
+        super.annoExtend(list);
 
         return list;
     }
@@ -424,6 +426,17 @@ public class MapperServiceImpl<T> extends BaseMapperService<T> implements Mapper
     @Override
     public MapperService<T> isNull(Property property) {
         return isNull(LambdaUtils.fieldName(property));
+    }
+
+    @Override
+    public MapperService<T> notNull(String key) {
+        (notNullMap = map(notNullMap)).put(key, null);
+        return this;
+    }
+
+    @Override
+    public MapperService<T> notNull(Property property) {
+        return notNull(LambdaUtils.fieldName(property));
     }
 
     @Override
