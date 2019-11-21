@@ -7,6 +7,7 @@ import kot.bootstarter.kotmybatis.common.CT;
 import kot.bootstarter.kotmybatis.common.Page;
 import kot.bootstarter.kotmybatis.common.id.IdGenerator;
 import kot.bootstarter.kotmybatis.common.id.IdGeneratorFactory;
+import kot.bootstarter.kotmybatis.common.model.ColumnExistInfo;
 import kot.bootstarter.kotmybatis.config.KotTableInfo;
 import kot.bootstarter.kotmybatis.exception.KotException;
 import kot.bootstarter.kotmybatis.lambda.Property;
@@ -18,11 +19,15 @@ import kot.bootstarter.kotmybatis.utils.KotStringUtils;
 import kot.bootstarter.kotmybatis.utils.LambdaUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.Assert;
+import org.springframework.util.CollectionUtils;
 
 import java.lang.reflect.Field;
 import java.util.*;
 
+import static kot.bootstarter.kotmybatis.config.KotTableInfo.getFieldWrapper;
 import static kot.bootstarter.kotmybatis.service.impl.BaseMapperService.MethodEnum.*;
+import static kot.bootstarter.kotmybatis.utils.KotStringUtils.isEmpty;
+import static kot.bootstarter.kotmybatis.utils.KotStringUtils.isNotEmpty;
 
 /**
  * @author YangYu
@@ -57,6 +62,38 @@ public class MapperServiceImpl<T> extends BaseMapperService<T> implements Mapper
         }
         return (int) execute();
     }
+
+    @Override
+    public ColumnExistInfo insertWithCheckColumns(T entity, String... columns) {
+        this.entity = entity;
+        final List<String> columnList = Arrays.asList(columns);
+        if (CollectionUtils.isEmpty(columnList)) {
+            return new ColumnExistInfo(this.insert(entity));
+        }
+        List<KotTableInfo.FieldWrapper> fieldWrappers = new ArrayList<>();
+
+        // 组装校验字段查询条件
+        columnList.forEach(column -> {
+            final KotTableInfo.FieldWrapper fieldWrapper = getFieldWrapper(entity, column);
+            final Object currVal = KotBeanUtils.getFieldVal(fieldWrapper, entity);
+            if (!isEmpty(currVal)) {
+                this.fields(fieldWrapper.getColumn());
+                this.or(fieldWrapper.getColumn(), currVal);
+                fieldWrappers.add(fieldWrapper);
+            }
+        });
+        // 关闭实体条件
+        super.activeEntityCondition = false;
+
+        final List<T> list = this.list(entity);
+        // 检查的字段不存在，正常保存数据
+        if (CollectionUtils.isEmpty(list)) {
+            return new ColumnExistInfo(this.insert(entity));
+        }
+        // 检查字段存在
+        return new ColumnExistInfo(true, existSet(list, fieldWrappers));
+    }
+
 
     @Override
     public int batchInsert(List<T> batchList) {
@@ -150,6 +187,55 @@ public class MapperServiceImpl<T> extends BaseMapperService<T> implements Mapper
     }
 
     @Override
+    public ColumnExistInfo updateByIdWithCheckColumns(T entity, String... columns) {
+        this.entity = entity;
+        final KotTableInfo.TableInfo tableInfo = KotTableInfo.get(entity);
+        final KotTableInfo.FieldWrapper primaryKey = tableInfo.getPrimaryKey();
+        final List<String> columnList = Arrays.asList(columns);
+        if (CollectionUtils.isEmpty(columnList)) {
+            return new ColumnExistInfo(this.updateById(entity));
+        }
+        List<KotTableInfo.FieldWrapper> fieldWrappers = new ArrayList<>();
+
+        // 组装校验字段查询条件
+        columnList.forEach(column -> {
+            final KotTableInfo.FieldWrapper fieldWrapper = getFieldWrapper(entity, column);
+            final Object currVal = KotBeanUtils.getFieldVal(fieldWrapper, entity);
+            if (!isEmpty(currVal)) {
+                this.fields(fieldWrapper.getColumn());
+                this.neq(primaryKey.getColumn(), KotBeanUtils.getFieldVal(primaryKey, entity));
+                this.or(fieldWrapper.getColumn(), currVal);
+                fieldWrappers.add(fieldWrapper);
+            }
+        });
+        // 关闭实体条件
+        super.activeEntityCondition = false;
+
+        final List<T> list = this.list(entity);
+        // 检查的字段不存在，正常保存数据
+        if (CollectionUtils.isEmpty(list)) {
+            // 重置neqMap,orMap
+
+            this.neqMap = null;
+            this.orMap = null;
+            return new ColumnExistInfo(this.updateById(entity));
+        }
+        // 检查字段存在
+        return new ColumnExistInfo(true, existSet(list, fieldWrappers));
+    }
+
+    private Set<String> existSet(List<T> list, List<KotTableInfo.FieldWrapper> fieldWrappers) {
+        Set<String> existSet = new HashSet<>();
+        list.forEach(o -> fieldWrappers.forEach(fieldWrapper -> {
+            final Object existVal = KotBeanUtils.getFieldVal(fieldWrapper, o);
+            if (isNotEmpty(existVal) && existVal.equals(KotBeanUtils.getFieldVal(fieldWrapper, entity))) {
+                existSet.add(fieldWrapper.getFieldName());
+            }
+        }));
+        return existSet;
+    }
+
+    @Override
     public int updateById(T entity, boolean setNull) {
         T whereEntity;
         try {
@@ -195,7 +281,7 @@ public class MapperServiceImpl<T> extends BaseMapperService<T> implements Mapper
                 continue;
             }
             final Object fieldVal = KotBeanUtils.getFieldVal(fieldWrapper.getField(), entity);
-            if (KotStringUtils.isEmpty(fieldVal)) {
+            if (isEmpty(fieldVal)) {
                 continue;
             }
             this.eq(fieldWrapper.getColumn(), fieldVal);

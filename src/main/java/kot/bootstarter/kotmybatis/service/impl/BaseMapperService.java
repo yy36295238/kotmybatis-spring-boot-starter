@@ -215,6 +215,9 @@ public class BaseMapperService<T> {
             sqlBuilder(conditionEnum, k, v);
             conditionMap.put(newKey(conditionEnum, k), v);
         });
+        if (conditionEnum == ConditionEnum.OR) {
+            sqlBuilder.append(CT.CLOSE);
+        }
     }
 
 
@@ -249,12 +252,21 @@ public class BaseMapperService<T> {
         }
     }
 
+    private boolean firstOr = true;
+
     /**
      * AND OR 处理
+     * 如果第一个OR条件改成AND并且拼接括号(),最终:SQL name=tom and (phone='13800138000' or email='123@qq.com')
      */
     private void doAndOr(ConditionEnum conditionEnum) {
         if (conditionEnum == ConditionEnum.OR) {
-            sqlBuilder.append(CT.OR);
+            if (firstOr) {
+                firstOr = false;
+                sqlBuilder.append(CT.AND);
+                sqlBuilder.append(CT.OPEN);
+            } else {
+                sqlBuilder.append(CT.OR);
+            }
         } else {
             sqlBuilder.append(CT.AND);
         }

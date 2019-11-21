@@ -5,6 +5,7 @@ import kot.bootstarter.kotmybatis.annotation.Delete;
 import kot.bootstarter.kotmybatis.annotation.ID;
 import kot.bootstarter.kotmybatis.annotation.TableName;
 import kot.bootstarter.kotmybatis.common.CT;
+import kot.bootstarter.kotmybatis.exception.KotException;
 import kot.bootstarter.kotmybatis.utils.KotStringUtils;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -19,6 +20,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static kot.bootstarter.kotmybatis.utils.KotStringUtils.classKeyWords;
+import static kot.bootstarter.kotmybatis.utils.KotStringUtils.underline2Camel;
 
 /**
  * @author YangYu
@@ -66,6 +68,7 @@ public class KotTableInfo {
         private Map<String, String> fieldColumnMap;
         private Map<String, String> columnFieldMap;
         private Map<String, FieldWrapper> fieldWrapperMap;
+        private Map<String, FieldWrapper> columnWrapperMap;
         /**
          * 关键字集合
          */
@@ -118,6 +121,7 @@ public class KotTableInfo {
         Map<String, String> fieldColumnMap = new HashMap<>();
         Map<String, String> columnFieldMap = new HashMap<>();
         Map<String, FieldWrapper> fieldWrapperMap = new HashMap<>();
+        Map<String, FieldWrapper> columnWrapperMap = new HashMap<>();
         Map<String, String> keyWordsMap = new HashMap<>();
         StringBuilder columnBuilder = new StringBuilder();
         StringBuilder noPkColumnBuilder = new StringBuilder();
@@ -167,6 +171,7 @@ public class KotTableInfo {
                 if (deleteAnno != null) {
                     builder.logicDelFieldWrapper(fieldWrapperBuilder.deleteAnnoVal(deleteAnno.value()).build());
                 }
+                columnWrapperMap.put(column, fieldWrapperBuilder.build());
             }
             fieldWrapperMap.put(field.getName(), fieldWrapperBuilder.build());
 
@@ -178,10 +183,22 @@ public class KotTableInfo {
 
         return builder.tableName(tableNameAnnotation.value()).columns(columnBuilder.toString()).noPkColumns(noPkColumnBuilder.toString())
                 .fieldColumnMap(fieldColumnMap).columnFieldMap(columnFieldMap).columnFields(columnFields)
-                .fieldWrapperMap(fieldWrapperMap).kewWordsMap(keyWordsMap)
+                .fieldWrapperMap(fieldWrapperMap).columnWrapperMap(columnWrapperMap).kewWordsMap(keyWordsMap)
                 .build();
 
     }
 
+    /**
+     * 获取数据库字段
+     */
+    public static FieldWrapper getFieldWrapper(Object entity, String name) {
+        final TableInfo tableInfo = KotTableInfo.get(entity);
+        final Map<String, FieldWrapper> fieldWrapperMap = tableInfo.getFieldWrapperMap();
+        final FieldWrapper fieldWrapper = fieldWrapperMap.get(underline2Camel(name));
+        if (fieldWrapper == null) {
+            throw new KotException("实体对象中:[" + entity.getClass() + "]未找到属性:[" + name + "]");
+        }
+        return fieldWrapper;
+    }
 
 }
