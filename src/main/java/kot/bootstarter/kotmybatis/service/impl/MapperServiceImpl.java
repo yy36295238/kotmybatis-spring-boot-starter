@@ -83,7 +83,7 @@ public class MapperServiceImpl<T> extends BaseMapperService<T> implements Mapper
             }
         });
         // 关闭实体条件
-        super.activeEntityCondition = false;
+        super.closeEntityCondition();
 
         final List<T> list = this.list(entity);
         // 检查的字段不存在，正常保存数据
@@ -209,15 +209,15 @@ public class MapperServiceImpl<T> extends BaseMapperService<T> implements Mapper
             }
         });
         // 关闭实体条件
-        super.activeEntityCondition = false;
-
+        super.closeEntityCondition();
         final List<T> list = this.list(entity);
+
         // 检查的字段不存在，正常保存数据
         if (CollectionUtils.isEmpty(list)) {
-            // 重置neqMap,orMap
-
-            this.neqMap = null;
-            this.orMap = null;
+            // 重置条件
+            super.resetCondition(neqMap, orMap);
+            // 打开实体条件
+            super.openEntityCondition();
             return new ColumnExistInfo(this.updateById(entity));
         }
         // 检查字段存在
@@ -272,7 +272,7 @@ public class MapperServiceImpl<T> extends BaseMapperService<T> implements Mapper
     @Override
     public Map<String, Object> columnExist(T entity) {
         Map<String, Object> existMap = new HashMap<>();
-        this.activeEntityCondition = false;
+        super.closeEntityCondition();
         // 判断该字段值存在
         final List<KotTableInfo.FieldWrapper> columnFields = KotTableInfo.get(entity).getColumnFields();
         for (KotTableInfo.FieldWrapper fieldWrapper : columnFields) {

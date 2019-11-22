@@ -158,41 +158,42 @@ public class BaseMapperService<T> {
         }
 
         // 链式条件
-        if (eqMap != null) {
+
+        if (!CollectionUtils.isEmpty(eqMap)) {
             conditionMapBuilder(ConditionEnum.EQ, eqMap);
         }
-        if (neqMap != null) {
+        if (!CollectionUtils.isEmpty(neqMap)) {
             conditionMapBuilder(ConditionEnum.NEQ, neqMap);
         }
-        if (inMap != null) {
+        if (!CollectionUtils.isEmpty(inMap)) {
             conditionMapBuilder(ConditionEnum.IN, inMap);
         }
-        if (ninMap != null) {
+        if (!CollectionUtils.isEmpty(ninMap)) {
             conditionMapBuilder(ConditionEnum.NIN, ninMap);
         }
-        if (ltMap != null) {
+        if (!CollectionUtils.isEmpty(ltMap)) {
             conditionMapBuilder(ConditionEnum.LT, ltMap);
         }
-        if (gtMap != null) {
+        if (!CollectionUtils.isEmpty(gtMap)) {
             conditionMapBuilder(ConditionEnum.GT, gtMap);
         }
-        if (lteMap != null) {
+        if (!CollectionUtils.isEmpty(lteMap)) {
             conditionMapBuilder(ConditionEnum.LTE, lteMap);
         }
-        if (gteMap != null) {
+        if (!CollectionUtils.isEmpty(gteMap)) {
             conditionMapBuilder(ConditionEnum.GTE, gteMap);
         }
-        if (likeMap != null) {
+        if (!CollectionUtils.isEmpty(likeMap)) {
             conditionMapBuilder(ConditionEnum.LIKE, likeMap);
         }
-        if (nullMap != null) {
+        if (!CollectionUtils.isEmpty(nullMap)) {
             conditionMapBuilder(ConditionEnum.NULL, nullMap);
         }
-        if (notNullMap != null) {
+        if (!CollectionUtils.isEmpty(notNullMap)) {
             conditionMapBuilder(ConditionEnum.NOT_NULL, notNullMap);
         }
         // 放在最后，否则拼接sql会有问题
-        if (orMap != null) {
+        if (!CollectionUtils.isEmpty(orMap)) {
             conditionMapBuilder(ConditionEnum.OR, orMap);
         }
 
@@ -330,8 +331,22 @@ public class BaseMapperService<T> {
     /**
      * 重置查询条件
      */
-    public void resetCondition() {
+    void resetCondition() {
         this.eqMap = null;
+        this.conditionSql = "";
+        this.sqlBuilder = new StringBuilder();
+    }
+
+    /**
+     * 重置查询条件
+     */
+    void resetCondition(Map<String, Object>... conditionMaps) {
+        for (Map<String, Object> map : conditionMaps) {
+            if (map == null) {
+                continue;
+            }
+            map.clear();
+        }
         this.conditionSql = "";
         this.sqlBuilder = new StringBuilder();
     }
@@ -353,6 +368,14 @@ public class BaseMapperService<T> {
         this.nullMap = null;
         this.conditionSql = "";
         this.sqlBuilder = new StringBuilder();
+    }
+
+    public void openEntityCondition() {
+        this.activeEntityCondition = true;
+    }
+
+    public void closeEntityCondition() {
+        this.activeEntityCondition = false;
     }
 
     private boolean isVersionLock(KotTableInfo.FieldWrapper fieldWrapper) {
