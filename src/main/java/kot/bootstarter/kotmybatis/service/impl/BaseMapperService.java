@@ -107,7 +107,7 @@ public class BaseMapperService<T> {
      */
     void handleGlobalAnnotation() {
         // 开启逻辑删除
-        if (!isSkipLogicDelMethod()) {
+        if (!skipLogicDelMethod()) {
             logicDel(false);
         }
     }
@@ -324,8 +324,8 @@ public class BaseMapperService<T> {
     /**
      * 跳过逻辑删除方法
      */
-    private boolean isSkipLogicDelMethod() {
-        return Arrays.asList(BATCH_INSERT, DELETE).contains(this.methodEnum);
+    private boolean skipLogicDelMethod() {
+        return Arrays.asList(INSERT, BATCH_INSERT, DELETE).contains(this.methodEnum);
     }
 
     /**
