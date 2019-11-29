@@ -27,5 +27,11 @@ public @interface UnionItem {
      */
     String fkColumn();
 
+    /**
+     * 当前关联表字段
+     * user_name
+     */
+    String currColumn() default "";
+
 
 }

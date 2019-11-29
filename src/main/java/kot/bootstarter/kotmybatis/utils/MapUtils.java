@@ -78,12 +78,14 @@ public class MapUtils {
         if (map == null) {
             return null;
         }
+        Object instance;
         try {
-            BeanUtils.populate(bean, toCamel(map));
+            instance = bean.getClass().newInstance();
+            BeanUtils.populate(instance, toCamel(map));
         } catch (Exception e) {
             throw new KotException("Map转成Bean错误", e);
         }
-        return bean;
+        return instance;
     }
 
     public static List mapsToBeans(Object bean, List<Map<String, Object>> maps) {

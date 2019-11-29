@@ -201,4 +201,14 @@ public class KotTableInfo {
         return fieldWrapper;
     }
 
+    public static String getColumn(TableInfo tableInfo, String name) {
+        if (tableInfo.getFieldColumnMap().containsKey(name)) {
+            return tableInfo.getFieldColumnMap().get(name);
+        }
+        if (tableInfo.getColumnFieldMap().containsKey(name)) {
+            return tableInfo.getColumnFieldMap().get(name);
+        }
+        throw new KotException("实体对象中:[" + tableInfo.getTableName() + "]未找到属性:[" + name + "]");
+    }
+
 }

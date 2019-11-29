@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
+import static kot.bootstarter.kotmybatis.config.KotTableInfo.getColumn;
 import static kot.bootstarter.kotmybatis.utils.MapUtils.mapToBean;
 import static kot.bootstarter.kotmybatis.utils.MapUtils.mapsToBeans;
 import static org.apache.commons.lang3.StringUtils.isBlank;
@@ -102,18 +103,21 @@ public class KotHelper {
                 // 子表信息
                 final Object itemEntity = unionItem.clazz().newInstance();
                 final KotTableInfo.TableInfo itemTableInfo = KotTableInfo.get(itemEntity);
+                // 子表的外键字段
+                String fkColumn = getColumn(itemTableInfo, unionItem.fkColumn());
                 for (Object oriEntity : list) {
-                    final Object fkVal = KotBeanUtils.getFieldVal(unionItem.fkColumn(), oriEntity);
+                    final KotTableInfo.TableInfo oriTableInfo = KotTableInfo.get(oriEntity);
+                    final Object fkVal = KotBeanUtils.getFieldVal(isBlank(unionItem.currColumn()) ? oriTableInfo.getPrimaryKey().getFieldName() : unionItem.currColumn(), oriEntity);
                     if (fkVal == null) {
                         continue;
                     }
                     // 外键赋值
-                    KotBeanUtils.setField(itemTableInfo.getPrimaryKey(), itemEntity, fkVal);
+                    KotBeanUtils.setField(unionItem.fkColumn(), itemEntity, fkVal);
                     // 属性类型赋值
                     if (fieldWrapper.getField().getType().toString().contains("java.util.List")) {
-                        KotBeanUtils.setField(fieldWrapper, oriEntity, mapsToBeans(itemEntity, baseMapper.kotUnionFindAll(itemTableInfo.getTableName(), itemTableInfo.getPrimaryKey().getColumn(), fkVal)));
+                        KotBeanUtils.setField(fieldWrapper, oriEntity, mapsToBeans(itemEntity, baseMapper.kotUnionFindAll(itemTableInfo.getTableName(), fkColumn, fkVal)));
                     } else if (fieldWrapper.getField().getType().equals(itemEntity.getClass())) {
-                        final List<Map<String, Object>> items = baseMapper.kotUnionFindAll(itemTableInfo.getTableName(), itemTableInfo.getPrimaryKey().getColumn(), fkVal);
+                        final List<Map<String, Object>> items = baseMapper.kotUnionFindAll(itemTableInfo.getTableName(), fkColumn, fkVal);
                         Map<String, Object> map = items.size() == 0 ? null : items.get(0);
                         KotBeanUtils.setField(fieldWrapper, oriEntity, mapToBean(itemEntity, map));
                     } else {
