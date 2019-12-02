@@ -23,13 +23,11 @@ public @interface UnionItem {
 
     /**
      * 外键关联表字段
-     * user_name
      */
     String fkColumn();
 
     /**
-     * 当前关联表字段
-     * user_name
+     * 当前关联表字段，不填写默认当前表主键
      */
     String currColumn() default "";
 
