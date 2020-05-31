@@ -34,4 +34,9 @@ public class MapperManagerServiceImpl<T> implements MapperManagerService<T> {
     public MapperService<T> newUpdate() {
         return new MapperServiceImpl<>(baseMapper, properties, idGeneratorFactory);
     }
+
+    @Override
+    public MapperService<T> ops() {
+        return new MapperServiceImpl<>(baseMapper, properties, idGeneratorFactory);
+    }
 }

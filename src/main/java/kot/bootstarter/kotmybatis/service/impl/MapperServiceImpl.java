@@ -35,7 +35,8 @@ import static kot.bootstarter.kotmybatis.utils.KotStringUtils.isNotEmpty;
  */
 @Slf4j
 public class MapperServiceImpl<T> extends BaseMapperService<T> implements MapperService<T> {
-
+    public MapperServiceImpl() {
+    }
 
     MapperServiceImpl(BaseMapper<T> baseMapper, KotMybatisProperties properties, IdGeneratorFactory idGeneratorFactory) {
         super.baseMapper = baseMapper;
