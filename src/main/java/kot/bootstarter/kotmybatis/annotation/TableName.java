@@ -9,10 +9,20 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
  * 表名注解
+ *
+ * @author yangyu
  */
 @Target(ElementType.TYPE)
 @Retention(RUNTIME)
 @Documented
 public @interface TableName {
-    String value() default "";
+    /**
+     * 表实际名称(t_user)
+     */
+    String value();
+
+    /**
+     * 业务类(UserService.class)
+     */
+    Class<?> service() default Void.class;
 }

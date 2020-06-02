@@ -1,6 +1,7 @@
 package kot.bootstarter.kotmybatis.activerecord;
 
 import com.github.pagehelper.PageInfo;
+import kot.bootstarter.kotmybatis.annotation.TableName;
 import kot.bootstarter.kotmybatis.common.Page;
 import kot.bootstarter.kotmybatis.common.model.ColumnExistInfo;
 import kot.bootstarter.kotmybatis.lambda.Property;
@@ -15,22 +16,24 @@ import java.util.Map;
 import static kot.bootstarter.kotmybatis.utils.KotStringUtils.toLowerCaseFirstOne;
 
 /**
- * Os
- *
- * @Author yangyu
- * @create 2020/5/31 下午7:11
+ * @author yangyu
+ * @date 2020/5/31 下午7:11
  */
 public class ActiveRecord<T> {
 
 
-    private MapperManagerService<T> mapperManagerService = SpringUtils.getBean(serviceName(), MapperManagerService.class);
+    private MapperManagerService<T> mapperManagerService = mapperManagerService();
 
     private MapperService<T> mapperService() {
         return mapperManagerService.ops();
     }
 
-    private String serviceName() {
-        return toLowerCaseFirstOne(this.getClass().getSimpleName()) + "ServiceImpl";
+    private MapperManagerService<T> mapperManagerService() {
+        TableName tableName = this.getClass().getAnnotation(TableName.class);
+        if (tableName.service() != Void.class) {
+            return (MapperManagerService) SpringUtils.getBean(tableName.service());
+        }
+        return SpringUtils.getBean(toLowerCaseFirstOne(this.getClass().getSimpleName()) + "ServiceImpl", MapperManagerService.class);
     }
 
 
