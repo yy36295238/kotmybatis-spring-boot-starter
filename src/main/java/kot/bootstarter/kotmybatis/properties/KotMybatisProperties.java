@@ -17,12 +17,12 @@ public class KotMybatisProperties {
     /**
      * Map类型下划线转驼峰
      */
-    private boolean mapResultUnderSoreToCamel;
+    private boolean mapResultUnderSoreToCamel = true;
 
     /**
      * 实体结果集下划线转驼峰
      */
-    private boolean entityResultUnderSoreToCamel;
+    private boolean entityResultUnderSoreToCamel = true;
 
     /**
      * 主键策略
