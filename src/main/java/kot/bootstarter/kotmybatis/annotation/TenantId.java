@@ -8,29 +8,12 @@ import java.lang.annotation.Target;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
- * 关联子表查询
+ * 租户ID
+ *
  * @author yangyu
  */
 @Target(ElementType.FIELD)
 @Retention(RUNTIME)
 @Documented
-public @interface UnionItem {
-
-    /**
-     * 关联表名
-     * User.class
-     */
-    Class<?> clazz();
-
-    /**
-     * 外键关联表字段
-     */
-    String fkColumn();
-
-    /**
-     * 当前关联表字段，不填写默认当前表主键
-     */
-    String currColumn() default "";
-
-
+public @interface TenantId {
 }

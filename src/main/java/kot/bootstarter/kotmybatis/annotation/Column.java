@@ -9,6 +9,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
  * 数据库字段
+ * @author yangyu
  */
 @Target(ElementType.FIELD)
 @Retention(RUNTIME)
